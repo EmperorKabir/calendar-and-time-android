@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.ui.graphics.asImageBitmap
 import com.kabirbhasin.statuscalendar.engine.notification.ChainedIconEngine
 import com.kabirbhasin.statuscalendar.engine.notification.IconFactory
+import com.kabirbhasin.statuscalendar.engine.slots.SlotEngine
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -219,6 +220,21 @@ private fun SettingsScreen(repository: SettingsRepository) {
                     "switched off unless you have confirmed that it helps on your phone.",
                 current.chainedEngineEnabled
             ) { scope.launch { repository.setChainedEngine(it) } }
+            val slotEngine = remember { SlotEngine(context) }
+            val installed = remember(current) { slotEngine.installedSlots().size }
+            ToggleRow(
+                "Extra icon slots",
+                if (installed > 0)
+                    "$installed companion app(s) installed, giving $installed extra icon(s) " +
+                        "inside the status bar. Your text is split across them, so longer " +
+                        "formats fit without any overlay."
+                else
+                    "Android gives each app one icon slot. Install the companion slot apps " +
+                        "to gain more real icons in the status bar, so longer formats fit " +
+                        "without an overlay. None are installed yet.",
+                current.slotEngineEnabled
+            ) { scope.launch { repository.setSlotEngine(it) } }
+
             HorizontalDivider()
             Text(
                 "Text option (drawn over the status bar)",

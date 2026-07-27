@@ -22,3 +22,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "calendar-and-time-android"
 include(":app")
+include(":companion")

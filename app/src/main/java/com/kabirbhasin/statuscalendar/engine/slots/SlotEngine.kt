@@ -1,0 +1,88 @@
+package com.kabirbhasin.statuscalendar.engine.slots
+
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import com.kabirbhasin.statuscalendar.core.format.RenderedDisplay
+import com.kabirbhasin.statuscalendar.engine.DisplayEngine
+
+/**
+ * Drives the companion slot apps. Android allocates one status bar icon slot
+ * per package, so each installed companion adds a genuine in-bar icon. The text
+ * is split across whichever companions are present, left to right.
+ */
+class SlotEngine(private val context: Context) : DisplayEngine {
+
+    companion object {
+        const val ACTION_SHOW = "com.kabirbhasin.statuscalendar.SHOW_SLOT"
+        const val ACTION_CLEAR = "com.kabirbhasin.statuscalendar.CLEAR_SLOT"
+        val SLOT_PACKAGES = listOf(
+            "com.kabirbhasin.statuscalendar.slot1",
+            "com.kabirbhasin.statuscalendar.slot2",
+            "com.kabirbhasin.statuscalendar.slot3"
+        )
+    }
+
+    private var active = false
+    private var lastChunks: List<String> = emptyList()
+
+    fun installedSlots(): List<String> = SLOT_PACKAGES.filter { isInstalled(it) }
+
+    private fun isInstalled(pkg: String): Boolean = runCatching {
+        context.packageManager.getPackageInfo(pkg, 0)
+        true
+    }.getOrDefault(false)
+
+    override fun start() {
+        active = true
+    }
+
+    override fun stop() {
+        active = false
+        lastChunks = emptyList()
+        SLOT_PACKAGES.forEach { pkg ->
+            context.sendBroadcast(
+                Intent(ACTION_CLEAR).setPackage(pkg)
+                    .addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES)
+            )
+        }
+    }
+
+    override fun render(display: RenderedDisplay) {
+        if (!active) return
+        val slots = installedSlots()
+        if (slots.isEmpty()) return
+
+        val chunks = split(display, slots.size)
+        if (chunks == lastChunks) return
+        lastChunks = chunks
+
+        slots.forEachIndexed { index, pkg ->
+            val intent = Intent(ACTION_SHOW).setPackage(pkg)
+                .addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES)
+            if (index == 0 && display.stackTop != null) {
+                intent.putExtra("top", display.stackTop)
+                intent.putExtra("bottom", display.stackBottom)
+            } else {
+                intent.putExtra("text", chunks.getOrElse(index) { "" })
+            }
+            context.sendBroadcast(intent)
+        }
+    }
+
+    /** Splits on word boundaries where possible so each slot holds whole words. */
+    private fun split(display: RenderedDisplay, slots: Int): List<String> {
+        if (display.stackTop != null) {
+            return List(slots) { if (it == 0) "${display.stackTop} ${display.stackBottom}" else "" }
+        }
+        val words = display.line.split(" ").filter { it.isNotEmpty() }
+        if (words.isEmpty()) return List(slots) { "" }
+        if (words.size >= slots) {
+            val perSlot = (words.size + slots - 1) / slots
+            return List(slots) { index ->
+                words.drop(index * perSlot).take(perSlot).joinToString(" ")
+            }
+        }
+        return List(slots) { words.getOrElse(it) { "" } }
+    }
+}

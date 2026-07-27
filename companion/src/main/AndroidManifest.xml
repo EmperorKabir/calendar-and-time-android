@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <permission
+        android:name="com.kabirbhasin.statuscalendar.SLOT_CONTROL"
+        android:protectionLevel="signature" />
+
+    <application
+        android:allowBackup="false"
+        android:icon="@android:drawable/ic_menu_my_calendar"
+        android:label="@string/slot_label">
+
+        <receiver
+            android:name=".SlotReceiver"
+            android:exported="true"
+            android:permission="com.kabirbhasin.statuscalendar.SLOT_CONTROL">
+            <intent-filter>
+                <action android:name="com.kabirbhasin.statuscalendar.SHOW_SLOT" />
+                <action android:name="com.kabirbhasin.statuscalendar.CLEAR_SLOT" />
+            </intent-filter>
+        </receiver>
+
+    </application>
+
+</manifest>
