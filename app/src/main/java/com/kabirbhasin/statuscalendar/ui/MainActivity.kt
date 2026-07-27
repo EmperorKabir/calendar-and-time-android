@@ -126,6 +126,22 @@ private fun SettingsScreen(repository: SettingsRepository) {
             ToggleRow("Notification icon engine", current.notificationEngineEnabled) {
                 scope.launch { repository.setNotificationEngine(it) }
             }
+            ToggleRow("Overlay engine (text in bar)", current.overlayEngineEnabled) {
+                scope.launch { repository.setOverlayEngine(it) }
+            }
+            if (current.overlayEngineEnabled && !Settings.canDrawOverlays(context)) {
+                TextButton(onClick = {
+                    context.startActivity(
+                        Intent(
+                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            "package:${context.packageName}".let(android.net.Uri::parse)
+                        )
+                    )
+                }) { Text("Grant \"draw over other apps\" for the overlay") }
+            }
+            if (current.overlayEngineEnabled) {
+                OverlayCalibration(current, repository)
+            }
             ToggleRow("Start after reboot", current.startOnBoot) {
                 scope.launch { repository.setStartOnBoot(it) }
             }
@@ -264,6 +280,44 @@ private fun CycleRow(label: String, value: String, onCycle: () -> Unit) {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(label, modifier = Modifier.weight(1f))
         TextButton(onClick = onCycle) { Text(value) }
+    }
+}
+
+@Composable
+private fun OverlayCalibration(
+    settings: AppSettings,
+    repository: SettingsRepository
+) {
+    val scope = rememberCoroutineScope()
+    val style = settings.overlayStyle
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("Overlay position and size", style = MaterialTheme.typography.labelLarge)
+            SliderRow("Horizontal", style.offsetX.toFloat(), 0f..1400f) {
+                scope.launch { repository.setOverlayStyle(style.copy(offsetX = it.toInt())) }
+            }
+            SliderRow("Vertical", style.offsetY.toFloat(), 0f..200f) {
+                scope.launch { repository.setOverlayStyle(style.copy(offsetY = it.toInt())) }
+            }
+            SliderRow("Text size", style.textSizeSp, 8f..24f) {
+                scope.launch { repository.setOverlayStyle(style.copy(textSizeSp = it)) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SliderRow(
+    label: String,
+    value: Float,
+    range: ClosedFloatingPointRange<Float>,
+    onChange: (Float) -> Unit
+) {
+    Column {
+        Text("$label: ${value.toInt()}", style = MaterialTheme.typography.bodySmall)
+        androidx.compose.material3.Slider(
+            value = value, onValueChange = onChange, valueRange = range
+        )
     }
 }
 

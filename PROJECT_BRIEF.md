@@ -123,6 +123,16 @@
 - Same capture: the SYSTEM clock already showed seconds (4:09:53) on this device — `clock_seconds`
   behaviour exists on ColorOS 16 (Tier-3 target confirmed real).
 
+- 2026-07-27 emulator-5554 (AOSP 16): small-icon bitmap renders as REAL READABLE TEXT in the status
+  bar ("Mon 27 Jul" beside the clock) — IconFactory validated end-to-end; ColorOS app-icon
+  substitution is OEM-specific. Notification record + FGS signals identical to physical device.
+- USER DIRECTIVES (2026-07-27, binding): (1) test on the EMULATOR only until the user re-permits
+  the physical device; (2) app theme = dark by default, pure-black AMOLED (implemented:
+  ui/theme/Theme.kt); (3) format system must be token-level extensive — implemented: DOW
+  EEEE/EEE/EEEEE/off · month MMMM/MMM/MM/M/off · year yyyy/yy/off · day pad/ordinal/off ·
+  date order DMY/MDY/YMD + separator [/ - . space] · hour HH/H/hh/h/off · seconds · am-pm
+  off/lower/upper · element order (6 permutations) · joiner set · stack. 23 JVM tests green.
+
 ## 8. Open items for the implementation plan (not blockers)
 - Per-OEM verification matrix for `clock_seconds` / `icon_blacklist` honouring (ColorOS 16 first —
   device on hand).

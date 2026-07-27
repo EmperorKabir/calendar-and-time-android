@@ -25,6 +25,7 @@ class DisplayController(
 ) {
 
     val notificationEngine = NotificationEngine(context)
+    val overlayEngine = com.kabirbhasin.statuscalendar.engine.overlay.OverlayEngine(context)
     private val repository = SettingsRepository(context)
     private val tickSource = TickSource(context, onRender = ::renderNow)
 
@@ -41,6 +42,7 @@ class DisplayController(
     fun stop() {
         tickSource.stop()
         notificationEngine.stop()
+        overlayEngine.stop()
     }
 
     /** Foreground notification for the hosting service, from current settings. */
@@ -58,6 +60,12 @@ class DisplayController(
         } else {
             notificationEngine.stop()
         }
+        if (newSettings.overlayEngineEnabled && overlayEngine.canDraw()) {
+            overlayEngine.start()
+            overlayEngine.applyStyle(newSettings.overlayStyle)
+        } else {
+            overlayEngine.stop()
+        }
         // The notification icon cannot tick per second; seconds ride the overlay only.
         tickSource.setSecondsWanted(
             newSettings.formatSpec.timeConfig.showSeconds && newSettings.overlayEngineEnabled
@@ -70,6 +78,9 @@ class DisplayController(
         if (!current.displayEnabled) return
         if (current.notificationEngineEnabled) {
             notificationEngine.render(currentDisplay(secondsCapable = false))
+        }
+        if (current.overlayEngineEnabled) {
+            overlayEngine.render(currentDisplay(secondsCapable = true))
         }
     }
 
