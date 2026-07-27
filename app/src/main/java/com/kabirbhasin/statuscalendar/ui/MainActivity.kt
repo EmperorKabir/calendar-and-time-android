@@ -324,6 +324,24 @@ private fun SettingsScreen(repository: SettingsRepository) {
             ) { v -> update { it.copy(stackMode = v) } }
 
             HorizontalDivider()
+            if (com.kabirbhasin.statuscalendar.BuildConfig.FLAVOR == "full") {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text("No-notification mode", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            "This build can run with no notification at all: enable " +
+                                "\"Status Calendar display keeper\" under Accessibility, then " +
+                                "switch off the status bar icon and use the overlay or system " +
+                                "clock. The service reads no screen content.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        TextButton(onClick = {
+                            context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                        }) { Text("Open accessibility settings") }
+                    }
+                }
+            }
             SystemIntegrationCard()
             BatteryCard()
         }
