@@ -104,6 +104,11 @@ private fun SettingsScreen(repository: SettingsRepository) {
             notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
+    // Re-assert the service whenever the display is meant to be on (covers
+    // app updates and process death while the toggle remained enabled).
+    LaunchedEffect(current.displayEnabled) {
+        if (current.displayEnabled) DisplayService.start(context)
+    }
 
     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
         Column(
