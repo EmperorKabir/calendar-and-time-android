@@ -197,11 +197,11 @@ private fun SettingsScreen(repository: SettingsRepository) {
             }
             HorizontalDivider()
             Text(
-                "Icon modes (inside the status bar)",
+                "Icon options (inside the status bar)",
                 style = MaterialTheme.typography.titleMedium
             )
             ToggleRow(
-                "Status bar icon",
+                "Icon option",
                 "A genuine element of the system status bar, drawn by Android itself in the " +
                     "same row as other apps' icons. Text is scaled automatically to fit the " +
                     "slot, so a date such as \"Mon 27 Jul\" stays readable. Some phones, " +
@@ -210,7 +210,7 @@ private fun SettingsScreen(repository: SettingsRepository) {
                 current.notificationEngineEnabled
             ) { scope.launch { repository.setNotificationEngine(it) } }
             ToggleRow(
-                "Chained text icons (experimental)",
+                "Multi icon option (experimental)",
                 "Splits your text across several notifications to claim extra icon slots. " +
                     "On Android 14 and newer the system merges all of an app's icons into a " +
                     "single slot, so this only adds entries to your notification list without " +
@@ -221,11 +221,11 @@ private fun SettingsScreen(repository: SettingsRepository) {
             ) { scope.launch { repository.setChainedEngine(it) } }
             HorizontalDivider()
             Text(
-                "Text mode (drawn over the status bar)",
+                "Text option (drawn over the status bar)",
                 style = MaterialTheme.typography.titleMedium
             )
             ToggleRow(
-                "Text overlay",
+                "Text option",
                 "For formats the status bar itself cannot hold. Your text is drawn on top of " +
                     "the bar area at any length, with live seconds if you want them. Because " +
                     "it sits above the bar rather than inside it, the text is hidden on the " +
@@ -615,7 +615,7 @@ private fun PreviewCard(settings: AppSettings) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("What each mode will show", style = MaterialTheme.typography.titleMedium)
 
-            Text("Status bar icon", style = MaterialTheme.typography.labelLarge)
+            Text("Icon option", style = MaterialTheme.typography.labelLarge)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -657,7 +657,7 @@ private fun PreviewCard(settings: AppSettings) {
 
             HorizontalDivider()
 
-            Text("Text overlay", style = MaterialTheme.typography.labelLarge)
+            Text("Text option", style = MaterialTheme.typography.labelLarge)
             val overlayText = if (rendered.stackTop != null) {
                 listOf(rendered.stackTop, rendered.stackBottom, rendered.line.ifEmpty { null })
                     .filterNotNull().joinToString(" ")
