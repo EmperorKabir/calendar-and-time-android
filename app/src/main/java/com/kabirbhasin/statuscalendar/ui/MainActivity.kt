@@ -626,17 +626,17 @@ private fun PreviewCard(settings: AppSettings) {
             )
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Image(
                     bitmap = bitmap.asImageBitmap(),
-                    contentDescription = "Status bar icon preview at actual size",
-                    modifier = Modifier.size(24.dp)
+                    contentDescription = "How the icon will look in the status bar",
+                    modifier = Modifier.size(26.dp)
                 )
-                Image(
-                    bitmap = bitmap.asImageBitmap(),
-                    contentDescription = "Status bar icon preview enlarged",
-                    modifier = Modifier.size(72.dp)
+                Text(
+                    "Actual size in your status bar",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             val iconWarning = when {
