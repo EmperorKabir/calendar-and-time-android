@@ -19,6 +19,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.graphics.asImageBitmap
+import com.kabirbhasin.statuscalendar.engine.notification.IconFactory
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -182,6 +186,11 @@ private fun SettingsScreen(repository: SettingsRepository) {
                     if (enabled) DisplayService.start(context) else DisplayService.stop(context)
                 }
             }
+            HorizontalDivider()
+            Text(
+                "Icon modes (inside the status bar)",
+                style = MaterialTheme.typography.titleMedium
+            )
             ToggleRow(
                 "Status bar icon",
                 "A genuine element of the system status bar, drawn by Android itself in the " +
@@ -201,6 +210,11 @@ private fun SettingsScreen(repository: SettingsRepository) {
                     "switched off unless you have confirmed that it helps on your phone.",
                 current.chainedEngineEnabled
             ) { scope.launch { repository.setChainedEngine(it) } }
+            HorizontalDivider()
+            Text(
+                "Text mode (drawn over the status bar)",
+                style = MaterialTheme.typography.titleMedium
+            )
             ToggleRow(
                 "Text overlay",
                 "For formats the status bar itself cannot hold. Your text is drawn on top of " +
@@ -531,14 +545,75 @@ private fun PreviewCard(settings: AppSettings) {
         }
     }
     val rendered = FormatEngine.render(settings.formatSpec, now, Locale.getDefault())
+    val iconFactory = remember { IconFactory() }
+    // The icon engine drops seconds, so preview exactly what it will draw.
+    val iconDisplay = rendered.copy(
+        line = FormatEngine.render(
+            settings.formatSpec.copy(
+                timeConfig = settings.formatSpec.timeConfig.copy(showSeconds = false)
+            ),
+            now, Locale.getDefault()
+        ).line
+    )
+    val bitmap = remember(iconDisplay) { iconFactory.iconFor(iconDisplay) }
+
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp)) {
-            Text("Preview", style = MaterialTheme.typography.labelMedium)
-            val text = if (rendered.stackTop != null) {
-                "${rendered.stackTop}\n${rendered.stackBottom}" +
-                    if (rendered.line.isNotEmpty()) "\n${rendered.line}" else ""
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("What each mode will show", style = MaterialTheme.typography.titleMedium)
+
+            Text("Status bar icon", style = MaterialTheme.typography.labelLarge)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = "Status bar icon preview at actual size",
+                    modifier = Modifier.size(24.dp)
+                )
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = "Status bar icon preview enlarged",
+                    modifier = Modifier.size(72.dp)
+                )
+            }
+            val iconWarning = when {
+                iconDisplay.stackTop != null -> null
+                iconDisplay.line.length > 6 ->
+                    "This is long for one icon slot, so it is shrunk to fit and may be hard " +
+                        "to read. Turn on the calendar stack, shorten the format, or use the " +
+                        "text overlay."
+                iconDisplay.line.isEmpty() -> "Nothing selected to show."
+                else -> null
+            }
+            iconWarning?.let {
+                Text(
+                    it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (settings.formatSpec.timeConfig.showSeconds) {
+                Text(
+                    "Seconds are left out here, because an icon cannot update every second.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            HorizontalDivider()
+
+            Text("Text overlay", style = MaterialTheme.typography.labelLarge)
+            val overlayText = if (rendered.stackTop != null) {
+                listOf(rendered.stackTop, rendered.stackBottom, rendered.line.ifEmpty { null })
+                    .filterNotNull().joinToString(" ")
             } else rendered.line.ifEmpty { "(nothing selected)" }
-            Text(text, style = MaterialTheme.typography.headlineSmall)
+            Text(overlayText, style = MaterialTheme.typography.headlineSmall)
+            Text(
+                "Shown in full, on one line, exactly as written above.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
