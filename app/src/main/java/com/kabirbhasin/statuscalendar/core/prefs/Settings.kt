@@ -83,46 +83,63 @@ class SettingsRepository(private val context: Context) {
     }
 
     val flow: Flow<AppSettings> = context.dataStore.data.map { p ->
+        runCatching { readSettings(p) }.getOrElse { defaults() }
+    }
+
+    private fun defaults(): AppSettings = AppSettings(
+        displayEnabled = false,
+        notificationEngineEnabled = true,
+        overlayEngineEnabled = false,
+        chainedEngineEnabled = false,
+        slotEngineEnabled = true,
+        displayMode = DisplayMode.COMPACT,
+        startOnBoot = true,
+        formatSpec = Presets.compactDate.spec,
+        overlayStyle = OverlayStyle(420, 0, 13f, 0xFFFFFFFF, true),
+        savedPresets = emptyList()
+    )
+
+    private fun readSettings(p: androidx.datastore.preferences.core.Preferences): AppSettings {
         val d = Presets.compactDate.spec
-        AppSettings(
-            displayEnabled = p[Keys.displayEnabled] ?: false,
-            notificationEngineEnabled = enumPref(p[Keys.displayMode], DisplayMode.COMPACT) != DisplayMode.FULL_TEXT,
-            overlayEngineEnabled = enumPref(p[Keys.displayMode], DisplayMode.COMPACT) != DisplayMode.COMPACT,
+        return AppSettings(
+            displayEnabled = p.safe(Keys.displayEnabled) ?: false,
+            notificationEngineEnabled = enumPref(p.safe(Keys.displayMode), DisplayMode.COMPACT) != DisplayMode.FULL_TEXT,
+            overlayEngineEnabled = enumPref(p.safe(Keys.displayMode), DisplayMode.COMPACT) != DisplayMode.COMPACT,
             chainedEngineEnabled = false,
-            slotEngineEnabled = p[Keys.slotEngine] ?: true,
-            displayMode = enumPref(p[Keys.displayMode], DisplayMode.COMPACT),
-            startOnBoot = p[Keys.startOnBoot] ?: true,
+            slotEngineEnabled = p.safe(Keys.slotEngine) ?: true,
+            displayMode = enumPref(p.safe(Keys.displayMode), DisplayMode.COMPACT),
+            startOnBoot = p.safe(Keys.startOnBoot) ?: true,
             formatSpec = FormatSpec(
-                order = p[Keys.order]?.split(",")
+                order = p.safe(Keys.order)?.split(",")
                     ?.mapNotNull { runCatching { DisplayElement.valueOf(it) }.getOrNull() }
                     ?.ifEmpty { d.order } ?: d.order,
-                dowStyle = enumPref(p[Keys.dowStyle], d.dowStyle),
+                dowStyle = enumPref(p.safe(Keys.dowStyle), d.dowStyle),
                 dateConfig = DateConfig(
-                    showDay = p[Keys.showDay] ?: d.dateConfig.showDay,
-                    dayPadded = p[Keys.dayPadded] ?: d.dateConfig.dayPadded,
-                    dayOrdinal = p[Keys.dayOrdinal] ?: d.dateConfig.dayOrdinal,
-                    ordinalSuperscript = p[Keys.ordinalSuper] ?: d.dateConfig.ordinalSuperscript,
-                    monthStyle = enumPref(p[Keys.monthStyle], d.dateConfig.monthStyle),
-                    yearStyle = enumPref(p[Keys.yearStyle], d.dateConfig.yearStyle),
-                    order = enumPref(p[Keys.dateOrder], d.dateConfig.order),
-                    separator = p[Keys.dateSeparator] ?: d.dateConfig.separator
+                    showDay = p.safe(Keys.showDay) ?: d.dateConfig.showDay,
+                    dayPadded = p.safe(Keys.dayPadded) ?: d.dateConfig.dayPadded,
+                    dayOrdinal = p.safe(Keys.dayOrdinal) ?: d.dateConfig.dayOrdinal,
+                    ordinalSuperscript = p.safe(Keys.ordinalSuper) ?: d.dateConfig.ordinalSuperscript,
+                    monthStyle = enumPref(p.safe(Keys.monthStyle), d.dateConfig.monthStyle),
+                    yearStyle = enumPref(p.safe(Keys.yearStyle), d.dateConfig.yearStyle),
+                    order = enumPref(p.safe(Keys.dateOrder), d.dateConfig.order),
+                    separator = p.safe(Keys.dateSeparator) ?: d.dateConfig.separator
                 ),
                 timeConfig = com.kabirbhasin.statuscalendar.core.format.TimeConfig(
-                    hourStyle = enumPref(p[Keys.hourStyle], d.timeConfig.hourStyle),
-                    showSeconds = p[Keys.seconds] ?: d.timeConfig.showSeconds,
-                    amPm = enumPref(p[Keys.amPm], d.timeConfig.amPm)
+                    hourStyle = enumPref(p.safe(Keys.hourStyle), d.timeConfig.hourStyle),
+                    showSeconds = p.safe(Keys.seconds) ?: d.timeConfig.showSeconds,
+                    amPm = enumPref(p.safe(Keys.amPm), d.timeConfig.amPm)
                 ),
-                separator = p[Keys.separator] ?: d.separator,
-                stackMode = p[Keys.stack] ?: d.stackMode
+                separator = p.safe(Keys.separator) ?: d.separator,
+                stackMode = p.safe(Keys.stack) ?: d.stackMode
             ),
             overlayStyle = OverlayStyle(
-                offsetX = p[Keys.overlayX] ?: 420,
-                offsetY = p[Keys.overlayY] ?: 0,
-                textSizeSp = p[Keys.overlaySize] ?: 13f,
-                textColor = p[Keys.overlayColor]?.toLongOrNull(16) ?: 0xFFFFFFFF,
-                hideInFullscreen = p[Keys.overlayHideFullscreen] ?: true
+                offsetX = p.safe(Keys.overlayX) ?: 420,
+                offsetY = p.safe(Keys.overlayY) ?: 0,
+                textSizeSp = p.safe(Keys.overlaySize) ?: 13f,
+                textColor = p.safe(Keys.overlayColor)?.toLongOrNull(16) ?: 0xFFFFFFFF,
+                hideInFullscreen = p.safe(Keys.overlayHideFullscreen) ?: true
             ),
-            savedPresets = decodePresets(p[Keys.savedPresets])
+            savedPresets = decodePresets(p.safe(Keys.savedPresets))
         )
     }
 
@@ -196,6 +213,11 @@ class SettingsRepository(private val context: Context) {
 
     private inline fun <reified T : Enum<T>> enumPref(name: String?, fallback: T): T =
         name?.let { runCatching { enumValueOf<T>(it) }.getOrNull() } ?: fallback
+
+    /** Reading a key whose stored type no longer matches must not crash the app. */
+    private fun <T> androidx.datastore.preferences.core.Preferences.safe(
+        key: androidx.datastore.preferences.core.Preferences.Key<T>
+    ): T? = runCatching { this[key] }.getOrNull()
 
     suspend fun setDisplayEnabled(value: Boolean) =
         context.dataStore.edit { it[Keys.displayEnabled] = value }

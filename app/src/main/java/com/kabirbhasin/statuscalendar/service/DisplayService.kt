@@ -18,9 +18,13 @@ class DisplayService : Service() {
 
     companion object {
         fun start(context: Context) {
-            ContextCompat.startForegroundService(
-                context, Intent(context, DisplayService::class.java)
-            )
+            // ColorOS and Android 12+ refuse background foreground-service starts;
+            // failing to launch must never take the app down with it.
+            runCatching {
+                ContextCompat.startForegroundService(
+                    context, Intent(context, DisplayService::class.java)
+                )
+            }
         }
 
         fun stop(context: Context) {
@@ -49,7 +53,11 @@ class DisplayService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    private fun goForeground() {
+    private fun goForeground() = runCatching { startForegroundInternal() }
+        .onFailure { stopSelf() }
+        .let { }
+
+    private fun startForegroundInternal() {
         val notification = controller.foregroundNotification()
         val type = if (Build.VERSION.SDK_INT >= 34) {
             ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
