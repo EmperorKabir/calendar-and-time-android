@@ -1,4 +1,6 @@
-package com.kabirbhasin.statuscalendar
+package com.kabirbhasin.statuscalendar.ui
+
+import com.kabirbhasin.statuscalendar.R
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity

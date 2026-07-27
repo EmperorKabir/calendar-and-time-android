@@ -1,0 +1,91 @@
+package com.kabirbhasin.statuscalendar.engine.notification
+
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.graphics.drawable.IconCompat
+import com.kabirbhasin.statuscalendar.core.format.RenderedDisplay
+import com.kabirbhasin.statuscalendar.engine.DisplayEngine
+import com.kabirbhasin.statuscalendar.ui.MainActivity
+
+class NotificationEngine(private val context: Context) : DisplayEngine {
+
+    companion object {
+        const val CHANNEL_ID = "status_display"
+        const val NOTIFICATION_ID = 1001
+    }
+
+    private val iconFactory = IconFactory()
+    private var lastRendered: RenderedDisplay? = null
+    private var active = false
+
+    override fun start() {
+        ensureChannel()
+        active = true
+    }
+
+    override fun stop() {
+        active = false
+        lastRendered = null
+        NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID)
+    }
+
+    override fun render(display: RenderedDisplay) {
+        if (!active || display == lastRendered) return
+        lastRendered = display
+        post(display)
+    }
+
+    /** Builds the current notification without posting; used as the FGS notification. */
+    fun build(display: RenderedDisplay): Notification {
+        ensureChannel()
+        lastRendered = display
+        val contentIntent = PendingIntent.getActivity(
+            context, 0,
+            Intent(context, MainActivity::class.java),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        val contentText = if (display.stackTop != null) {
+            "${display.stackTop} ${display.stackBottom}"
+        } else display.line
+        return NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(IconCompat.createWithBitmap(iconFactory.iconFor(display)))
+            .setContentTitle(contentText)
+            .setContentIntent(contentIntent)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setSilent(true)
+            .setShowWhen(false)
+            .setSortKey("0")
+            .setCategory(NotificationCompat.CATEGORY_STATUS)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
+            .build()
+    }
+
+    private fun post(display: RenderedDisplay) {
+        val manager = NotificationManagerCompat.from(context)
+        if (!manager.areNotificationsEnabled()) return
+        runCatching { manager.notify(NOTIFICATION_ID, build(display)) }
+    }
+
+    private fun ensureChannel() {
+        val manager = context.getSystemService(NotificationManager::class.java)
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            "Status bar display",
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            setSound(null, null)
+            enableVibration(false)
+            setShowBadge(false)
+            description = "Hosts the calendar/clock icon shown in the status bar"
+        }
+        manager.createNotificationChannel(channel)
+    }
+}
