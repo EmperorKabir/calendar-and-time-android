@@ -324,7 +324,57 @@ private fun SettingsScreen(repository: SettingsRepository) {
             ) { v -> update { it.copy(stackMode = v) } }
 
             HorizontalDivider()
+            SystemIntegrationCard()
             BatteryCard()
+        }
+    }
+}
+
+@Composable
+private fun SystemIntegrationCard() {
+    val context = LocalContext.current
+    val tweaks = remember { com.kabirbhasin.statuscalendar.engine.system.SystemTweaks(context) }
+    var refresh by remember { mutableStateOf(0) }
+    val granted = remember(refresh) { tweaks.granted() }
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("System clock integration", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Deepest option: changes the phone's OWN status bar clock rather than " +
+                    "adding to it. Needs a one-off permission granted from a computer:",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                tweaks.grantCommand(),
+                style = MaterialTheme.typography.bodySmall
+            )
+            if (!granted) {
+                TextButton(onClick = { refresh++ }) { Text("Check permission again") }
+            } else {
+                var seconds by remember { mutableStateOf(tweaks.isClockSecondsOn()) }
+                var hidden by remember { mutableStateOf(tweaks.isSystemClockHidden()) }
+                ToggleRow(
+                    "System clock seconds",
+                    "The phone's own clock ticks live seconds — no overlay needed.",
+                    seconds
+                ) { on -> if (tweaks.setClockSeconds(on)) seconds = on }
+                ToggleRow(
+                    "Hide system clock",
+                    "Remove the phone's clock so this app's display takes its place.",
+                    hidden
+                ) { on -> if (tweaks.setSystemClockHidden(on)) hidden = on }
+            }
+            val oem = remember { com.kabirbhasin.statuscalendar.core.oem.OemProfile.detect() }
+            Text("Your device: ${oem.label}", style = MaterialTheme.typography.labelLarge)
+            oem.iconCaveat?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            oem.backgroundSteps.forEach {
+                Text("• $it", style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
 }
