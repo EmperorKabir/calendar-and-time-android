@@ -8,7 +8,8 @@ to `01-07`, `21:05:07` or a desk-calendar style `WED` over `1`.
 
 | Engine | What it is | Strengths | Limits |
 |---|---|---|---|
-| Status bar icon | A real notification icon in the system bar | Works everywhere, survives lockscreen | Compact text; ~24dp; some OEMs (ColorOS) show the app logo instead; needs a notification entry |
+| Status bar icon | A real notification icon in the system bar | Works everywhere, survives lockscreen, text auto-scales to fit (`Mon 27 Jul` verified legible) | One slot; some OEMs (ColorOS) show the app logo instead; needs a notification entry |
+| Chained text icons (experimental, off by default) | Several notifications claiming extra icon slots | May help on older Android / some OEM builds | Measured on Android 14+: the system collapses an app's icons into ONE slot, so it only adds shade entries |
 | Text overlay | A window drawn over the bar's empty space | Any format, live seconds, per-pixel position/size | Hidden on lockscreen and in fullscreen apps |
 | System clock integration | Writes the hidden SystemUI settings | The phone's OWN clock ticks seconds; can hide the system clock so your display replaces it | Needs `WRITE_SECURE_SETTINGS` via one adb command (below); honouring varies by OEM |
 

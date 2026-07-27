@@ -133,6 +133,23 @@
   date order DMY/MDY/YMD + separator [/ - . space] · hour HH/H/hh/h/off · seconds · am-pm
   off/lower/upper · element order (6 permutations) · joiner set · stack. 23 JVM tests green.
 
+## 7b. Status-bar integration — measured platform truths (emulator AOSP 16, 2026-07-27)
+- **Tier 1 IS real in-bar integration.** SystemUI renders our notification small icon as a true bar
+  element; IconFactory auto-scaling keeps "Mon 27 Jul" legible in one slot. Evidence: screenshots
+  `emu_strip2.png`, `chain4_z.png`.
+- **Tier 3 PROVEN on AOSP 16**: `Settings.Secure clock_seconds=1` → the phone's OWN clock ticks
+  seconds; `icon_blacklist=clock` → system clock disappears and our icon stands alone (evidence:
+  `t3a_z.png`, `t3b_z.png`; settings restored after). Plus `Settings.System time_12_24` for 12/24h.
+  This is the "unlocked as a system thing" behaviour the user remembered — granted by one adb
+  command (`pm grant … WRITE_SECURE_SETTINGS`) or Shizuku, no root.
+- **Chained multi-icon does NOT multiply slots on Android 14+.** Posted 3 chained notifications
+  (ids 2000–2002) + FGS 1001 → the bar rendered exactly ONE icon for the package. Android collapses
+  an app's icons into a single slot (overflow shown as a dot). Mode retained for older/OEM builds but
+  labelled with this measured result and defaulted OFF.
+- **Arbitrary text painted into the bar is impossible unrooted** — SystemUI owns that surface; only
+  notification icons + system clock elements are app-reachable. The overlay tier exists solely for
+  formats the bar cannot hold and is optional.
+
 ## 8. Open items for the implementation plan (not blockers)
 - Per-OEM verification matrix for `clock_seconds` / `icon_blacklist` honouring (ColorOS 16 first —
   device on hand).

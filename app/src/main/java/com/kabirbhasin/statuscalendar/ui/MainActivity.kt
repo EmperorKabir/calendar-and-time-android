@@ -178,15 +178,20 @@ private fun SettingsScreen(repository: SettingsRepository) {
             }
             ToggleRow(
                 "Status bar icon",
-                "Adds a real icon to the system status bar, like other apps' icons. " +
-                    "Compact text only; some phones (e.g. OPPO/OnePlus) replace it with the app logo.",
+                "A genuine element of the system status bar, rendered by Android itself " +
+                    "in the same row as other apps' icons. Text is auto-scaled to fit the " +
+                    "slot (verified: \"Mon 27 Jul\" stays readable). Some phones " +
+                    "(e.g. OPPO/OnePlus) substitute the app logo — use system clock " +
+                    "integration or the overlay there.",
                 current.notificationEngineEnabled
             ) { scope.launch { repository.setNotificationEngine(it) } }
             ToggleRow(
                 "Chained text icons (experimental)",
-                "Splits longer text across several status bar icons so it sits genuinely " +
-                    "IN the bar. Needed because one icon slot only fits a few characters. " +
-                    "Cost: one notification entry per chunk, and some phones cap icon count.",
+                "Splits text across several notifications to claim extra icon slots. " +
+                    "Measured result on Android 14+: the system collapses all of an app's " +
+                    "icons into ONE slot, so this adds shade entries without adding icons. " +
+                    "Kept for older Android and OEM builds that still show a slot per " +
+                    "notification — leave it off unless you have verified it helps on your phone.",
                 current.chainedEngineEnabled
             ) { scope.launch { repository.setChainedEngine(it) } }
             ToggleRow(
