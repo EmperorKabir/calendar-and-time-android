@@ -5,7 +5,7 @@ data class Preset(val id: String, val label: String, val spec: FormatSpec)
 object Presets {
 
     private val plainDate = DateConfig(
-        showDay = true, dayPadded = false, dayOrdinal = false,
+        showDay = true, dayPadded = false, dayOrdinal = false, ordinalSuperscript = true,
         monthStyle = MonthStyle.NONE, yearStyle = YearStyle.NONE,
         order = DateOrder.DMY, separator = "/"
     )

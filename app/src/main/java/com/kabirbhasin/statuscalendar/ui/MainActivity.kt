@@ -2,6 +2,7 @@ package com.kabirbhasin.statuscalendar.ui
 
 import android.Manifest
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -13,17 +14,22 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -81,8 +87,34 @@ private val elementOrders: List<List<DisplayElement>> = listOf(
     listOf(DisplayElement.TIME, DisplayElement.DATE, DisplayElement.DOW)
 )
 
+private fun DisplayElement.label() = when (this) {
+    DisplayElement.DOW -> "Day"
+    DisplayElement.DATE -> "Date"
+    DisplayElement.TIME -> "Time"
+}
+
+private fun orderLabel(order: List<DisplayElement>) =
+    order.joinToString(" · ") { it.label() }
+
 private val joiners = listOf(", ", " ", " · ", " - ", " | ")
 private val dateSeparators = listOf("/", "-", ".", " ")
+
+private fun joinerLabel(j: String) = when (j) {
+    ", " -> "Comma  (, )"
+    " " -> "Space"
+    " · " -> "Dot  ( · )"
+    " - " -> "Dash  ( - )"
+    " | " -> "Bar  ( | )"
+    else -> "\"$j\""
+}
+
+private fun dateSeparatorLabel(s: String) = when (s) {
+    "/" -> "Slash  (01/02)"
+    "-" -> "Hyphen  (01-02)"
+    "." -> "Full stop  (01.02)"
+    " " -> "Space  (01 02)"
+    else -> "\"$s\""
+}
 
 @Composable
 private fun SettingsScreen(repository: SettingsRepository) {
@@ -104,8 +136,6 @@ private fun SettingsScreen(repository: SettingsRepository) {
             notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
-    // Re-assert the service whenever the display is meant to be on (covers
-    // app updates and process death while the toggle remained enabled).
     LaunchedEffect(current.displayEnabled) {
         if (current.displayEnabled) DisplayService.start(context)
     }
@@ -122,41 +152,55 @@ private fun SettingsScreen(repository: SettingsRepository) {
 
             PreviewCard(current)
 
-            ToggleRow("Show in status bar", current.displayEnabled) { enabled ->
+            ToggleRow(
+                "Show in status bar",
+                "Master switch for the whole display.",
+                current.displayEnabled
+            ) { enabled ->
                 scope.launch {
                     repository.setDisplayEnabled(enabled)
                     if (enabled) DisplayService.start(context) else DisplayService.stop(context)
                 }
             }
-            ToggleRow("Notification icon engine", current.notificationEngineEnabled) {
-                scope.launch { repository.setNotificationEngine(it) }
-            }
-            ToggleRow("Overlay engine (text in bar)", current.overlayEngineEnabled) {
-                scope.launch { repository.setOverlayEngine(it) }
-            }
+            ToggleRow(
+                "Status bar icon",
+                "Adds a real icon to the system status bar, like other apps' icons. " +
+                    "Compact text only; some phones (e.g. OPPO/OnePlus) replace it with the app logo.",
+                current.notificationEngineEnabled
+            ) { scope.launch { repository.setNotificationEngine(it) } }
+            ToggleRow(
+                "Text overlay",
+                "Draws your text on top of the status bar area. Shows any format, " +
+                    "including seconds, on every phone. Not visible on the lock screen.",
+                current.overlayEngineEnabled
+            ) { scope.launch { repository.setOverlayEngine(it) } }
             if (current.overlayEngineEnabled && !Settings.canDrawOverlays(context)) {
                 TextButton(onClick = {
                     context.startActivity(
                         Intent(
                             Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                            "package:${context.packageName}".let(android.net.Uri::parse)
+                            Uri.parse("package:${context.packageName}")
                         )
                     )
-                }) { Text("Grant \"draw over other apps\" for the overlay") }
+                }) { Text("Grant \"display over other apps\" to enable the overlay") }
             }
             if (current.overlayEngineEnabled) {
                 OverlayCalibration(current, repository)
             }
-            ToggleRow("Start after reboot", current.startOnBoot) {
-                scope.launch { repository.setStartOnBoot(it) }
-            }
+            ToggleRow(
+                "Start after reboot",
+                "Bring the display back automatically every time the phone restarts.",
+                current.startOnBoot
+            ) { scope.launch { repository.setStartOnBoot(it) } }
 
             HorizontalDivider()
             Text("Quick presets", style = MaterialTheme.typography.titleMedium)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())) {
+                    .horizontalScroll(rememberScrollState())
+            ) {
                 Presets.all.forEach { preset ->
                     AssistChip(
                         onClick = { scope.launch { repository.setFormatSpec(preset.spec) } },
@@ -168,76 +212,116 @@ private fun SettingsScreen(repository: SettingsRepository) {
             HorizontalDivider()
             Text("Custom format", style = MaterialTheme.typography.titleMedium)
 
-            CycleRow("Element order",
-                spec.order.joinToString(" → ") { it.name.lowercase() }) {
-                val index = elementOrders.indexOfFirst { it == spec.order }
-                update { it.copy(order = elementOrders[(index + 1).mod(elementOrders.size)]) }
-            }
-            CycleRow("Joiner", "\"${spec.separator}\"") {
-                val index = joiners.indexOf(spec.separator)
-                update { it.copy(separator = joiners[(index + 1).mod(joiners.size)]) }
-            }
-            CycleRow("Day of week", when (spec.dowStyle) {
-                DowStyle.FULL -> "Full (Wednesday)"
-                DowStyle.SHORT -> "Short (Wed)"
-                DowStyle.NARROW -> "Narrow (W)"
-                DowStyle.NONE -> "Hidden"
-            }) { update { it.copy(dowStyle = next(spec.dowStyle)) } }
+            DropdownRow(
+                "Element order",
+                "Which parts show, and in what sequence.",
+                orderLabel(spec.order),
+                elementOrders.map { orderLabel(it) }
+            ) { index -> update { it.copy(order = elementOrders[index]) } }
+
+            DropdownRow(
+                "Separator between parts",
+                "Text placed between day, date and time.",
+                joinerLabel(spec.separator),
+                joiners.map { joinerLabel(it) }
+            ) { index -> update { it.copy(separator = joiners[index]) } }
+
+            DropdownRow(
+                "Day of week",
+                "How the weekday name is written.",
+                dowLabel(spec.dowStyle),
+                DowStyle.entries.map { dowLabel(it) }
+            ) { index -> update { it.copy(dowStyle = DowStyle.entries[index]) } }
 
             Text("Date", style = MaterialTheme.typography.labelLarge)
-            ToggleRow("Show day of month", spec.dateConfig.showDay) { v ->
-                update { it.copy(dateConfig = it.dateConfig.copy(showDay = v)) }
+            ToggleRow(
+                "Day of month",
+                "Show the day number (e.g. 27).",
+                spec.dateConfig.showDay
+            ) { v -> update { it.copy(dateConfig = it.dateConfig.copy(showDay = v)) } }
+            ToggleRow(
+                "Ordinal day",
+                "Write the day as 1st, 2nd, 3rd… Overrides the two-digit option.",
+                spec.dateConfig.dayOrdinal
+            ) { v -> update { it.copy(dateConfig = it.dateConfig.copy(dayOrdinal = v)) } }
+            if (spec.dateConfig.dayOrdinal) {
+                ToggleRow(
+                    "Raised suffix",
+                    "Show the ordinal ending slightly raised: 1ˢᵗ instead of 1st.",
+                    spec.dateConfig.ordinalSuperscript
+                ) { v -> update { it.copy(dateConfig = it.dateConfig.copy(ordinalSuperscript = v)) } }
             }
-            ToggleRow("Ordinal day (1st)", spec.dateConfig.dayOrdinal) { v ->
-                update { it.copy(dateConfig = it.dateConfig.copy(dayOrdinal = v)) }
-            }
-            ToggleRow("Two-digit day (01)", spec.dateConfig.dayPadded) { v ->
-                update { it.copy(dateConfig = it.dateConfig.copy(dayPadded = v)) }
-            }
-            CycleRow("Month", when (spec.dateConfig.monthStyle) {
-                MonthStyle.FULL -> "Full (January)"
-                MonthStyle.SHORT -> "Short (Jan)"
-                MonthStyle.NUMBER_PADDED -> "Number (01)"
-                MonthStyle.NUMBER -> "Number (1)"
-                MonthStyle.NONE -> "Hidden"
-            }) { update { it.copy(dateConfig = it.dateConfig.copy(monthStyle = next(spec.dateConfig.monthStyle))) } }
-            CycleRow("Year", when (spec.dateConfig.yearStyle) {
-                YearStyle.FULL -> "Full (2026)"
-                YearStyle.TWO_DIGIT -> "Short (26)"
-                YearStyle.NONE -> "Hidden"
-            }) { update { it.copy(dateConfig = it.dateConfig.copy(yearStyle = next(spec.dateConfig.yearStyle))) } }
-            CycleRow("Date order", spec.dateConfig.order.name) {
-                update { it.copy(dateConfig = it.dateConfig.copy(order = next(spec.dateConfig.order))) }
-            }
-            CycleRow("Date separator", "\"${spec.dateConfig.separator}\"") {
-                val index = dateSeparators.indexOf(spec.dateConfig.separator)
-                update {
-                    it.copy(dateConfig = it.dateConfig.copy(
-                        separator = dateSeparators[(index + 1).mod(dateSeparators.size)]
-                    ))
-                }
+            ToggleRow(
+                "Two-digit day",
+                "Pad single days with a zero (01 instead of 1).",
+                spec.dateConfig.dayPadded
+            ) { v -> update { it.copy(dateConfig = it.dateConfig.copy(dayPadded = v)) } }
+
+            DropdownRow(
+                "Month",
+                "How the month is written.",
+                monthLabel(spec.dateConfig.monthStyle),
+                MonthStyle.entries.map { monthLabel(it) }
+            ) { index -> update { it.copy(dateConfig = it.dateConfig.copy(monthStyle = MonthStyle.entries[index])) } }
+
+            DropdownRow(
+                "Year",
+                "How the year is written.",
+                yearLabel(spec.dateConfig.yearStyle),
+                YearStyle.entries.map { yearLabel(it) }
+            ) { index -> update { it.copy(dateConfig = it.dateConfig.copy(yearStyle = YearStyle.entries[index])) } }
+
+            DropdownRow(
+                "Date part order",
+                "Arrangement of day, month and year within the date.",
+                dateOrderLabel(spec.dateConfig.order),
+                DateOrder.entries.map { dateOrderLabel(it) }
+            ) { index -> update { it.copy(dateConfig = it.dateConfig.copy(order = DateOrder.entries[index])) } }
+
+            val numericMonth = spec.dateConfig.monthStyle == MonthStyle.NUMBER_PADDED ||
+                spec.dateConfig.monthStyle == MonthStyle.NUMBER
+            if (numericMonth) {
+                DropdownRow(
+                    "Date separator",
+                    "Between the numbers of a numeric date (e.g. 27/07/2026).",
+                    dateSeparatorLabel(spec.dateConfig.separator),
+                    dateSeparators.map { dateSeparatorLabel(it) }
+                ) { index -> update { it.copy(dateConfig = it.dateConfig.copy(separator = dateSeparators[index])) } }
+            } else {
+                Text(
+                    "Date separator applies only when the month is a number; " +
+                        "written month names use spaces.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
             Text("Time", style = MaterialTheme.typography.labelLarge)
-            CycleRow("Hours", when (spec.timeConfig.hourStyle) {
-                HourStyle.H24_PADDED -> "24-hour (09)"
-                HourStyle.H24 -> "24-hour (9)"
-                HourStyle.H12_PADDED -> "12-hour (09)"
-                HourStyle.H12 -> "12-hour (9)"
-                HourStyle.NONE -> "Hidden"
-            }) { update { it.copy(timeConfig = it.timeConfig.copy(hourStyle = next(spec.timeConfig.hourStyle))) } }
-            ToggleRow("Seconds", spec.timeConfig.showSeconds) { v ->
-                update { it.copy(timeConfig = it.timeConfig.copy(showSeconds = v)) }
-            }
-            CycleRow("AM/PM", when (spec.timeConfig.amPm) {
-                AmPmStyle.NONE -> "Hidden"
-                AmPmStyle.LOWERCASE -> "am/pm"
-                AmPmStyle.UPPERCASE -> "AM/PM"
-            }) { update { it.copy(timeConfig = it.timeConfig.copy(amPm = next(spec.timeConfig.amPm))) } }
+            DropdownRow(
+                "Hours",
+                "Clock style and zero-padding.",
+                hourLabel(spec.timeConfig.hourStyle),
+                HourStyle.entries.map { hourLabel(it) }
+            ) { index -> update { it.copy(timeConfig = it.timeConfig.copy(hourStyle = HourStyle.entries[index])) } }
+            ToggleRow(
+                "Seconds",
+                "Tick live seconds. Shown by the text overlay only — the status bar " +
+                    "icon cannot update once a second.",
+                spec.timeConfig.showSeconds
+            ) { v -> update { it.copy(timeConfig = it.timeConfig.copy(showSeconds = v)) } }
+            DropdownRow(
+                "AM/PM",
+                "Morning/afternoon marker for 12-hour clocks.",
+                amPmLabel(spec.timeConfig.amPm),
+                AmPmStyle.entries.map { amPmLabel(it) }
+            ) { index -> update { it.copy(timeConfig = it.timeConfig.copy(amPm = AmPmStyle.entries[index])) } }
 
-            ToggleRow("Calendar-icon stack", spec.stackMode) { v ->
-                update { it.copy(stackMode = v) }
-            }
+            ToggleRow(
+                "Calendar-icon stack",
+                "Show the weekday stacked above the day number, like a desk calendar " +
+                    "(used by the status bar icon).",
+                spec.stackMode
+            ) { v -> update { it.copy(stackMode = v) } }
 
             HorizontalDivider()
             BatteryCard()
@@ -245,9 +329,86 @@ private fun SettingsScreen(repository: SettingsRepository) {
     }
 }
 
-private inline fun <reified T : Enum<T>> next(value: T): T {
-    val values = enumValues<T>()
-    return values[(value.ordinal + 1) % values.size]
+private fun dowLabel(style: DowStyle) = when (style) {
+    DowStyle.FULL -> "Full  (Wednesday)"
+    DowStyle.SHORT -> "Short  (Wed)"
+    DowStyle.NARROW -> "Letter  (W)"
+    DowStyle.NONE -> "Hidden"
+}
+
+private fun monthLabel(style: MonthStyle) = when (style) {
+    MonthStyle.FULL -> "Full name  (January)"
+    MonthStyle.SHORT -> "Short name  (Jan)"
+    MonthStyle.NUMBER_PADDED -> "Two-digit number  (01)"
+    MonthStyle.NUMBER -> "Number  (1)"
+    MonthStyle.NONE -> "Hidden"
+}
+
+private fun yearLabel(style: YearStyle) = when (style) {
+    YearStyle.FULL -> "Full  (2026)"
+    YearStyle.TWO_DIGIT -> "Two-digit  (26)"
+    YearStyle.NONE -> "Hidden"
+}
+
+private fun dateOrderLabel(order: DateOrder) = when (order) {
+    DateOrder.DMY -> "Day-Month-Year"
+    DateOrder.MDY -> "Month-Day-Year"
+    DateOrder.YMD -> "Year-Month-Day"
+}
+
+private fun hourLabel(style: HourStyle) = when (style) {
+    HourStyle.H24_PADDED -> "24-hour, two-digit  (09:30)"
+    HourStyle.H24 -> "24-hour  (9:30)"
+    HourStyle.H12_PADDED -> "12-hour, two-digit  (09:30)"
+    HourStyle.H12 -> "12-hour  (9:30)"
+    HourStyle.NONE -> "Hidden"
+}
+
+private fun amPmLabel(style: AmPmStyle) = when (style) {
+    AmPmStyle.NONE -> "Hidden"
+    AmPmStyle.LOWERCASE -> "Lowercase  (am/pm)"
+    AmPmStyle.UPPERCASE -> "Uppercase  (AM/PM)"
+}
+
+@Composable
+private fun DropdownRow(
+    label: String,
+    description: String,
+    value: String,
+    options: List<String>,
+    onSelect: (Int) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(label)
+            Text(
+                description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Column {
+            OutlinedButton(
+                onClick = { expanded = true },
+                modifier = Modifier.widthIn(min = 200.dp)
+            ) { Text(value) }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                options.forEachIndexed { index, option ->
+                    DropdownMenuItem(
+                        text = { Text(option) },
+                        onClick = {
+                            expanded = false
+                            onSelect(index)
+                        }
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -273,18 +434,22 @@ private fun PreviewCard(settings: AppSettings) {
 }
 
 @Composable
-private fun ToggleRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+private fun ToggleRow(
+    label: String,
+    description: String,
+    checked: Boolean,
+    onChange: (Boolean) -> Unit
+) {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, modifier = Modifier.weight(1f))
+        Column(Modifier.weight(1f)) {
+            Text(label)
+            Text(
+                description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
         Switch(checked = checked, onCheckedChange = onChange)
-    }
-}
-
-@Composable
-private fun CycleRow(label: String, value: String, onCycle: () -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, modifier = Modifier.weight(1f))
-        TextButton(onClick = onCycle) { Text(value) }
     }
 }
 
@@ -298,6 +463,11 @@ private fun OverlayCalibration(
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("Overlay position and size", style = MaterialTheme.typography.labelLarge)
+            Text(
+                "Move the text so it sits in an empty part of your status bar.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
             SliderRow("Horizontal", style.offsetX.toFloat(), 0f..1400f) {
                 scope.launch { repository.setOverlayStyle(style.copy(offsetX = it.toInt())) }
             }
@@ -320,9 +490,7 @@ private fun SliderRow(
 ) {
     Column {
         Text("$label: ${value.toInt()}", style = MaterialTheme.typography.bodySmall)
-        androidx.compose.material3.Slider(
-            value = value, onValueChange = onChange, valueRange = range
-        )
+        Slider(value = value, onValueChange = onChange, valueRange = range)
     }
 }
 

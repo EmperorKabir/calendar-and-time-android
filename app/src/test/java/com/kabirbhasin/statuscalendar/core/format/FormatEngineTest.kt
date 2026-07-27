@@ -16,7 +16,7 @@ class FormatEngineTest {
     private val midweek: ZonedDateTime = ZonedDateTime.of(2026, 1, 7, 21, 5, 7, 0, zone)
 
     private val date = DateConfig(
-        showDay = true, dayPadded = false, dayOrdinal = false,
+        showDay = true, dayPadded = false, dayOrdinal = false, ordinalSuperscript = false,
         monthStyle = MonthStyle.NONE, yearStyle = YearStyle.NONE,
         order = DateOrder.DMY, separator = "/"
     )
@@ -142,6 +142,20 @@ class FormatEngineTest {
         val r = FormatEngine.render(spec(), newYear, locale)
         assertEquals(null, r.stackTop)
         assertEquals(null, r.stackBottom)
+    }
+
+    @Test fun superscriptOrdinal() =
+        assertEquals("1ˢᵗ January 2026", render(spec(
+            order = listOf(DisplayElement.DATE),
+            dateConfig = date.copy(dayOrdinal = true, ordinalSuperscript = true,
+                monthStyle = MonthStyle.FULL, yearStyle = YearStyle.FULL))))
+
+    @Test fun superscriptSuffixVariants() {
+        assertEquals("2ⁿᵈ", FormatEngine.withOrdinal(2, superscript = true))
+        assertEquals("3ʳᵈ", FormatEngine.withOrdinal(3, superscript = true))
+        assertEquals("4ᵗʰ", FormatEngine.withOrdinal(4, superscript = true))
+        assertEquals("11ᵗʰ", FormatEngine.withOrdinal(11, superscript = true))
+        assertEquals("21ˢᵗ", FormatEngine.withOrdinal(21, superscript = true))
     }
 
     // Ordinals

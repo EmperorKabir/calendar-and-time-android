@@ -52,6 +52,7 @@ class SettingsRepository(private val context: Context) {
         val showDay = booleanPreferencesKey("format_show_day")
         val dayPadded = booleanPreferencesKey("format_day_padded")
         val dayOrdinal = booleanPreferencesKey("format_day_ordinal")
+        val ordinalSuper = booleanPreferencesKey("format_ordinal_superscript")
         val monthStyle = stringPreferencesKey("format_month")
         val yearStyle = stringPreferencesKey("format_year")
         val dateOrder = stringPreferencesKey("format_date_order")
@@ -85,6 +86,7 @@ class SettingsRepository(private val context: Context) {
                     showDay = p[Keys.showDay] ?: d.dateConfig.showDay,
                     dayPadded = p[Keys.dayPadded] ?: d.dateConfig.dayPadded,
                     dayOrdinal = p[Keys.dayOrdinal] ?: d.dateConfig.dayOrdinal,
+                    ordinalSuperscript = p[Keys.ordinalSuper] ?: d.dateConfig.ordinalSuperscript,
                     monthStyle = enumPref(p[Keys.monthStyle], d.dateConfig.monthStyle),
                     yearStyle = enumPref(p[Keys.yearStyle], d.dateConfig.yearStyle),
                     order = enumPref(p[Keys.dateOrder], d.dateConfig.order),
@@ -129,6 +131,7 @@ class SettingsRepository(private val context: Context) {
         it[Keys.showDay] = spec.dateConfig.showDay
         it[Keys.dayPadded] = spec.dateConfig.dayPadded
         it[Keys.dayOrdinal] = spec.dateConfig.dayOrdinal
+        it[Keys.ordinalSuper] = spec.dateConfig.ordinalSuperscript
         it[Keys.monthStyle] = spec.dateConfig.monthStyle.name
         it[Keys.yearStyle] = spec.dateConfig.yearStyle.name
         it[Keys.dateOrder] = spec.dateConfig.order.name

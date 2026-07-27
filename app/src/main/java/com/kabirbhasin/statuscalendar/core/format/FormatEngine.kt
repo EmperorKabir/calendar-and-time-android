@@ -39,7 +39,7 @@ object FormatEngine {
 
         val day = when {
             !config.showDay -> null
-            config.dayOrdinal -> withOrdinal(dt.dayOfMonth)
+            config.dayOrdinal -> withOrdinal(dt.dayOfMonth, config.ordinalSuperscript)
             config.dayPadded -> "%02d".format(dt.dayOfMonth)
             else -> dt.dayOfMonth.toString()
         }
@@ -87,7 +87,8 @@ object FormatEngine {
         return builder.toString()
     }
 
-    fun withOrdinal(day: Int): String = "$day${ordinalSuffix(day)}"
+    fun withOrdinal(day: Int, superscript: Boolean = false): String =
+        "$day${if (superscript) superscriptSuffix(day) else ordinalSuffix(day)}"
 
     private fun ordinalSuffix(day: Int): String = when {
         day % 100 in 11..13 -> "th"
@@ -95,5 +96,14 @@ object FormatEngine {
         day % 10 == 2 -> "nd"
         day % 10 == 3 -> "rd"
         else -> "th"
+    }
+
+    // Unicode superscript letters render the raised suffix identically in the
+    // notification icon, the overlay TextView and the Compose preview.
+    private fun superscriptSuffix(day: Int): String = when (ordinalSuffix(day)) {
+        "st" -> "ˢᵗ"   // ˢᵗ
+        "nd" -> "ⁿᵈ"   // ⁿᵈ
+        "rd" -> "ʳᵈ"   // ʳᵈ
+        else -> "ᵗʰ"   // ᵗʰ
     }
 }

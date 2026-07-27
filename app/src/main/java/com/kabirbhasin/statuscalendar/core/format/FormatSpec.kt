@@ -23,6 +23,7 @@ data class DateConfig(
     val showDay: Boolean,
     val dayPadded: Boolean,
     val dayOrdinal: Boolean,
+    val ordinalSuperscript: Boolean,
     val monthStyle: MonthStyle,
     val yearStyle: YearStyle,
     val order: DateOrder,
