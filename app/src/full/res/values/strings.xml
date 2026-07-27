@@ -1,0 +1,6 @@
+<resources>
+    <string name="keepalive_service_label">Status Calendar display keeper</string>
+    <string name="keepalive_service_description">Keeps the status bar calendar and
+        clock display running without any notification. Reads no screen content and
+        collects no data; it exists only so the display survives in the background.</string>
+</resources>
