@@ -9,6 +9,7 @@ import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -68,7 +69,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        // The app is always pure black, so the system bars need light contents
+        // regardless of the device's light/dark setting.
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+        )
         val repository = SettingsRepository(applicationContext)
         setContent {
             StatusCalendarTheme {
@@ -100,19 +106,19 @@ private val joiners = listOf(", ", " ", " · ", " - ", " | ")
 private val dateSeparators = listOf("/", "-", ".", " ")
 
 private fun joinerLabel(j: String) = when (j) {
-    ", " -> "Comma  (, )"
+    ", " -> "Comma"
     " " -> "Space"
-    " · " -> "Dot  ( · )"
-    " - " -> "Dash  ( - )"
-    " | " -> "Bar  ( | )"
+    " · " -> "Middle dot"
+    " - " -> "Dash"
+    " | " -> "Vertical bar"
     else -> "\"$j\""
 }
 
 private fun dateSeparatorLabel(s: String) = when (s) {
-    "/" -> "Slash  (01/02)"
-    "-" -> "Hyphen  (01-02)"
-    "." -> "Full stop  (01.02)"
-    " " -> "Space  (01 02)"
+    "/" -> "Slash (01/02)"
+    "-" -> "Hyphen (01-02)"
+    "." -> "Full stop (01.02)"
+    " " -> "Space (01 02)"
     else -> "\"$s\""
 }
 
@@ -158,8 +164,8 @@ private fun SettingsScreen(repository: SettingsRepository) {
                     Text(
                         "Android only lets an app put two things inside the real status bar: " +
                             "notification icons, and the phone's own clock. Each mode below " +
-                            "trades length, fidelity and shade clutter differently — enable the " +
-                            "combination that suits your phone.",
+                            "trades length, fidelity and notification clutter differently. " +
+                            "Enable whichever combination suits your phone.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -168,7 +174,7 @@ private fun SettingsScreen(repository: SettingsRepository) {
 
             ToggleRow(
                 "Show in status bar",
-                "Master switch for the whole display.",
+                "Turn the whole display on or off.",
                 current.displayEnabled
             ) { enabled ->
                 scope.launch {
@@ -178,27 +184,29 @@ private fun SettingsScreen(repository: SettingsRepository) {
             }
             ToggleRow(
                 "Status bar icon",
-                "A genuine element of the system status bar, rendered by Android itself " +
-                    "in the same row as other apps' icons. Text is auto-scaled to fit the " +
-                    "slot (verified: \"Mon 27 Jul\" stays readable). Some phones " +
-                    "(e.g. OPPO/OnePlus) substitute the app logo — use system clock " +
-                    "integration or the overlay there.",
+                "A genuine element of the system status bar, drawn by Android itself in the " +
+                    "same row as other apps' icons. Text is scaled automatically to fit the " +
+                    "slot, so a date such as \"Mon 27 Jul\" stays readable. Some phones, " +
+                    "including OPPO and OnePlus, substitute the app logo instead; on those, " +
+                    "use system clock integration or the overlay.",
                 current.notificationEngineEnabled
             ) { scope.launch { repository.setNotificationEngine(it) } }
             ToggleRow(
                 "Chained text icons (experimental)",
-                "Splits text across several notifications to claim extra icon slots. " +
-                    "Measured result on Android 14+: the system collapses all of an app's " +
-                    "icons into ONE slot, so this adds shade entries without adding icons. " +
-                    "Kept for older Android and OEM builds that still show a slot per " +
-                    "notification — leave it off unless you have verified it helps on your phone.",
+                "Splits your text across several notifications to claim extra icon slots. " +
+                    "On Android 14 and newer the system merges all of an app's icons into a " +
+                    "single slot, so this only adds entries to your notification list without " +
+                    "adding icons. It remains available for older versions of Android, and for " +
+                    "manufacturer builds that still show one slot per notification. Leave it " +
+                    "switched off unless you have confirmed that it helps on your phone.",
                 current.chainedEngineEnabled
             ) { scope.launch { repository.setChainedEngine(it) } }
             ToggleRow(
                 "Text overlay",
-                "Last resort for formats the bar cannot hold: draws your text over the bar " +
-                    "area. Any length plus live seconds, but it is painted on top rather than " +
-                    "part of the bar, so it is hidden on the lock screen and in fullscreen apps.",
+                "For formats the status bar itself cannot hold. Your text is drawn on top of " +
+                    "the bar area at any length, with live seconds if you want them. Because " +
+                    "it sits above the bar rather than inside it, the text is hidden on the " +
+                    "lock screen and in fullscreen apps.",
                 current.overlayEngineEnabled
             ) { scope.launch { repository.setOverlayEngine(it) } }
             if (current.overlayEngineEnabled && !Settings.canDrawOverlays(context)) {
@@ -216,7 +224,7 @@ private fun SettingsScreen(repository: SettingsRepository) {
             }
             ToggleRow(
                 "Start after reboot",
-                "Bring the display back automatically every time the phone restarts.",
+                "Bring the display back automatically whenever the phone restarts.",
                 current.startOnBoot
             ) { scope.launch { repository.setStartOnBoot(it) } }
 
@@ -241,21 +249,21 @@ private fun SettingsScreen(repository: SettingsRepository) {
 
             DropdownRow(
                 "Element order",
-                "Which parts show, and in what sequence.",
+                "Choose which parts appear, and in what sequence.",
                 orderLabel(spec.order),
                 elementOrders.map { orderLabel(it) }
             ) { index -> update { it.copy(order = elementOrders[index]) } }
 
             DropdownRow(
                 "Separator between parts",
-                "Text placed between day, date and time.",
+                "The text placed between the day, date and time.",
                 joinerLabel(spec.separator),
                 joiners.map { joinerLabel(it) }
             ) { index -> update { it.copy(separator = joiners[index]) } }
 
             DropdownRow(
                 "Day of week",
-                "How the weekday name is written.",
+                "Choose how the weekday name is written.",
                 dowLabel(spec.dowStyle),
                 DowStyle.entries.map { dowLabel(it) }
             ) { index -> update { it.copy(dowStyle = DowStyle.entries[index]) } }
@@ -263,44 +271,44 @@ private fun SettingsScreen(repository: SettingsRepository) {
             Text("Date", style = MaterialTheme.typography.labelLarge)
             ToggleRow(
                 "Day of month",
-                "Show the day number (e.g. 27).",
+                "Show the day number, such as 27.",
                 spec.dateConfig.showDay
             ) { v -> update { it.copy(dateConfig = it.dateConfig.copy(showDay = v)) } }
             ToggleRow(
                 "Ordinal day",
-                "Write the day as 1st, 2nd, 3rd… Overrides the two-digit option.",
+                "Write the day as 1st, 2nd or 3rd. This overrides the two digit option.",
                 spec.dateConfig.dayOrdinal
             ) { v -> update { it.copy(dateConfig = it.dateConfig.copy(dayOrdinal = v)) } }
             if (spec.dateConfig.dayOrdinal) {
                 ToggleRow(
                     "Raised suffix",
-                    "Show the ordinal ending slightly raised: 1ˢᵗ instead of 1st.",
+                    "Raise the ending slightly, so the date reads 1ˢᵗ rather than 1st.",
                     spec.dateConfig.ordinalSuperscript
                 ) { v -> update { it.copy(dateConfig = it.dateConfig.copy(ordinalSuperscript = v)) } }
             }
             ToggleRow(
-                "Two-digit day",
-                "Pad single days with a zero (01 instead of 1).",
+                "Two digit day",
+                "Add a leading zero, so the first of the month reads 01 rather than 1.",
                 spec.dateConfig.dayPadded
             ) { v -> update { it.copy(dateConfig = it.dateConfig.copy(dayPadded = v)) } }
 
             DropdownRow(
                 "Month",
-                "How the month is written.",
+                "Choose how the month is written.",
                 monthLabel(spec.dateConfig.monthStyle),
                 MonthStyle.entries.map { monthLabel(it) }
             ) { index -> update { it.copy(dateConfig = it.dateConfig.copy(monthStyle = MonthStyle.entries[index])) } }
 
             DropdownRow(
                 "Year",
-                "How the year is written.",
+                "Choose how the year is written.",
                 yearLabel(spec.dateConfig.yearStyle),
                 YearStyle.entries.map { yearLabel(it) }
             ) { index -> update { it.copy(dateConfig = it.dateConfig.copy(yearStyle = YearStyle.entries[index])) } }
 
             DropdownRow(
                 "Date part order",
-                "Arrangement of day, month and year within the date.",
+                "Choose the arrangement of day, month and year.",
                 dateOrderLabel(spec.dateConfig.order),
                 DateOrder.entries.map { dateOrderLabel(it) }
             ) { index -> update { it.copy(dateConfig = it.dateConfig.copy(order = DateOrder.entries[index])) } }
@@ -310,14 +318,14 @@ private fun SettingsScreen(repository: SettingsRepository) {
             if (numericMonth) {
                 DropdownRow(
                     "Date separator",
-                    "Between the numbers of a numeric date (e.g. 27/07/2026).",
+                    "The character between the numbers of a numeric date, such as 27/07/2026.",
                     dateSeparatorLabel(spec.dateConfig.separator),
                     dateSeparators.map { dateSeparatorLabel(it) }
                 ) { index -> update { it.copy(dateConfig = it.dateConfig.copy(separator = dateSeparators[index])) } }
             } else {
                 Text(
-                    "Date separator applies only when the month is a number; " +
-                        "written month names use spaces.",
+                    "The date separator applies only when the month is shown as a number. " +
+                        "Written month names are spaced instead.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -326,27 +334,27 @@ private fun SettingsScreen(repository: SettingsRepository) {
             Text("Time", style = MaterialTheme.typography.labelLarge)
             DropdownRow(
                 "Hours",
-                "Clock style and zero-padding.",
+                "Choose the clock style and whether hours carry a leading zero.",
                 hourLabel(spec.timeConfig.hourStyle),
                 HourStyle.entries.map { hourLabel(it) }
             ) { index -> update { it.copy(timeConfig = it.timeConfig.copy(hourStyle = HourStyle.entries[index])) } }
             ToggleRow(
                 "Seconds",
-                "Tick live seconds. Shown by the text overlay only — the status bar " +
-                    "icon cannot update once a second.",
+                "Show live seconds. Only the text overlay can display these, because a " +
+                    "status bar icon cannot update once every second.",
                 spec.timeConfig.showSeconds
             ) { v -> update { it.copy(timeConfig = it.timeConfig.copy(showSeconds = v)) } }
             DropdownRow(
                 "AM/PM",
-                "Morning/afternoon marker for 12-hour clocks.",
+                "The morning or afternoon marker used by 12 hour clocks.",
                 amPmLabel(spec.timeConfig.amPm),
                 AmPmStyle.entries.map { amPmLabel(it) }
             ) { index -> update { it.copy(timeConfig = it.timeConfig.copy(amPm = AmPmStyle.entries[index])) } }
 
             ToggleRow(
                 "Calendar-icon stack",
-                "Show the weekday stacked above the day number, like a desk calendar " +
-                    "(used by the status bar icon).",
+                "Show the weekday above the day number, like a desk calendar. Used by " +
+                    "the status bar icon.",
                 spec.stackMode
             ) { v -> update { it.copy(stackMode = v) } }
 
@@ -356,10 +364,10 @@ private fun SettingsScreen(repository: SettingsRepository) {
                     Column(Modifier.padding(16.dp)) {
                         Text("No-notification mode", style = MaterialTheme.typography.titleMedium)
                         Text(
-                            "This build can run with no notification at all: enable " +
+                            "This build can run without any notification at all. Enable " +
                                 "\"Status Calendar display keeper\" under Accessibility, then " +
-                                "switch off the status bar icon and use the overlay or system " +
-                                "clock. The service reads no screen content.",
+                                "switch off the status bar icon and use the overlay or the " +
+                                "system clock instead. The service reads no screen content.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -385,8 +393,9 @@ private fun SystemIntegrationCard() {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("System clock integration", style = MaterialTheme.typography.titleMedium)
             Text(
-                "Deepest option: changes the phone's OWN status bar clock rather than " +
-                    "adding to it. Needs a one-off permission granted from a computer:",
+                "The deepest option. Instead of adding to the status bar, this changes the " +
+                    "phone's own clock. It needs a permission that you grant once from a " +
+                    "computer, using this command:",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -401,18 +410,18 @@ private fun SystemIntegrationCard() {
                 var hidden by remember { mutableStateOf(tweaks.isSystemClockHidden()) }
                 ToggleRow(
                     "System clock seconds",
-                    "The phone's own clock ticks live seconds — no overlay needed.",
+                    "The phone's own clock ticks live seconds, with no overlay needed.",
                     seconds
                 ) { on -> if (tweaks.setClockSeconds(on)) seconds = on }
                 ToggleRow(
                     "Hide system clock",
-                    "Remove the phone's clock so this app's display takes its place.",
+                    "Remove the phone's own clock so that this display takes its place.",
                     hidden
                 ) { on -> if (tweaks.setSystemClockHidden(on)) hidden = on }
                 var h24 by remember { mutableStateOf(tweaks.is24Hour()) }
                 ToggleRow(
-                    "24-hour system clock",
-                    "Switches the whole phone between 12-hour and 24-hour time.",
+                    "24 hour system clock",
+                    "Switch the whole phone between 12 hour and 24 hour time.",
                     h24
                 ) { on -> if (tweaks.set24Hour(on)) h24 = on }
             }
@@ -431,44 +440,44 @@ private fun SystemIntegrationCard() {
 }
 
 private fun dowLabel(style: DowStyle) = when (style) {
-    DowStyle.FULL -> "Full  (Wednesday)"
-    DowStyle.SHORT -> "Short  (Wed)"
-    DowStyle.NARROW -> "Letter  (W)"
+    DowStyle.FULL -> "Full name (Wednesday)"
+    DowStyle.SHORT -> "Short name (Wed)"
+    DowStyle.NARROW -> "Single letter (W)"
     DowStyle.NONE -> "Hidden"
 }
 
 private fun monthLabel(style: MonthStyle) = when (style) {
-    MonthStyle.FULL -> "Full name  (January)"
-    MonthStyle.SHORT -> "Short name  (Jan)"
-    MonthStyle.NUMBER_PADDED -> "Two-digit number  (01)"
-    MonthStyle.NUMBER -> "Number  (1)"
+    MonthStyle.FULL -> "Full name (January)"
+    MonthStyle.SHORT -> "Short name (Jan)"
+    MonthStyle.NUMBER_PADDED -> "Two digit number (01)"
+    MonthStyle.NUMBER -> "Number (1)"
     MonthStyle.NONE -> "Hidden"
 }
 
 private fun yearLabel(style: YearStyle) = when (style) {
-    YearStyle.FULL -> "Full  (2026)"
-    YearStyle.TWO_DIGIT -> "Two-digit  (26)"
+    YearStyle.FULL -> "Full year (2026)"
+    YearStyle.TWO_DIGIT -> "Two digits (26)"
     YearStyle.NONE -> "Hidden"
 }
 
 private fun dateOrderLabel(order: DateOrder) = when (order) {
-    DateOrder.DMY -> "Day-Month-Year"
-    DateOrder.MDY -> "Month-Day-Year"
-    DateOrder.YMD -> "Year-Month-Day"
+    DateOrder.DMY -> "Day, month, year"
+    DateOrder.MDY -> "Month, day, year"
+    DateOrder.YMD -> "Year, month, day"
 }
 
 private fun hourLabel(style: HourStyle) = when (style) {
-    HourStyle.H24_PADDED -> "24-hour, two-digit  (09:30)"
-    HourStyle.H24 -> "24-hour  (9:30)"
-    HourStyle.H12_PADDED -> "12-hour, two-digit  (09:30)"
-    HourStyle.H12 -> "12-hour  (9:30)"
+    HourStyle.H24_PADDED -> "24 hour with leading zero (09:30)"
+    HourStyle.H24 -> "24 hour (9:30)"
+    HourStyle.H12_PADDED -> "12 hour with leading zero (09:30)"
+    HourStyle.H12 -> "12 hour (9:30)"
     HourStyle.NONE -> "Hidden"
 }
 
 private fun amPmLabel(style: AmPmStyle) = when (style) {
     AmPmStyle.NONE -> "Hidden"
-    AmPmStyle.LOWERCASE -> "Lowercase  (am/pm)"
-    AmPmStyle.UPPERCASE -> "Uppercase  (AM/PM)"
+    AmPmStyle.LOWERCASE -> "Lowercase (am/pm)"
+    AmPmStyle.UPPERCASE -> "Uppercase (AM/PM)"
 }
 
 @Composable
@@ -565,7 +574,7 @@ private fun OverlayCalibration(
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("Overlay position and size", style = MaterialTheme.typography.labelLarge)
             Text(
-                "Move the text so it sits in an empty part of your status bar.",
+                "Move the text so that it sits in an empty part of your status bar.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -602,8 +611,9 @@ private fun BatteryCard() {
         Column(Modifier.padding(16.dp)) {
             Text("Reliability", style = MaterialTheme.typography.titleMedium)
             Text(
-                "To keep the display alive on aggressive devices, exempt this app " +
-                    "from battery optimisation and allow background activity.",
+                "Some phones close background apps aggressively. To keep the display " +
+                    "running, exempt this app from battery optimisation and allow it to " +
+                    "work in the background.",
                 style = MaterialTheme.typography.bodyMedium
             )
             TextButton(onClick = {
