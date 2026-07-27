@@ -4,17 +4,23 @@ data class Preset(val id: String, val label: String, val spec: FormatSpec)
 
 object Presets {
 
+    private val plainDate = DateConfig(
+        showDay = true, dayPadded = false, dayOrdinal = false,
+        monthStyle = MonthStyle.NONE, yearStyle = YearStyle.NONE,
+        order = DateOrder.DMY, separator = "/"
+    )
+    private val noTime = TimeConfig(HourStyle.NONE, showSeconds = false, amPm = AmPmStyle.NONE)
+
     val fullDate = Preset(
         id = "full_date",
         label = "Full date",
         spec = FormatSpec(
             order = listOf(DisplayElement.DOW, DisplayElement.DATE),
             dowStyle = DowStyle.FULL,
-            dateStyle = DateStyle.FULL_ORDINAL,
-            timeStyle = TimeStyle.NONE,
-            showSeconds = false,
-            showAmPm = false,
-            leadingZero = true,
+            dateConfig = plainDate.copy(
+                dayOrdinal = true, monthStyle = MonthStyle.FULL, yearStyle = YearStyle.FULL
+            ),
+            timeConfig = noTime,
             separator = ", ",
             stackMode = false
         )
@@ -25,7 +31,7 @@ object Presets {
         label = "Compact date",
         spec = fullDate.spec.copy(
             dowStyle = DowStyle.SHORT,
-            dateStyle = DateStyle.SHORT,
+            dateConfig = plainDate.copy(monthStyle = MonthStyle.SHORT),
             separator = " "
         )
     )
@@ -36,7 +42,21 @@ object Presets {
         spec = fullDate.spec.copy(
             order = listOf(DisplayElement.DATE),
             dowStyle = DowStyle.NONE,
-            dateStyle = DateStyle.ISO
+            dateConfig = plainDate.copy(
+                dayPadded = true, monthStyle = MonthStyle.NUMBER_PADDED,
+                yearStyle = YearStyle.FULL, order = DateOrder.YMD, separator = "-"
+            )
+        )
+    )
+
+    val numericDate = Preset(
+        id = "numeric_date",
+        label = "Numeric date",
+        spec = isoDate.spec.copy(
+            dateConfig = plainDate.copy(
+                dayPadded = true, monthStyle = MonthStyle.NUMBER_PADDED,
+                yearStyle = YearStyle.FULL
+            )
         )
     )
 
@@ -45,7 +65,7 @@ object Presets {
         label = "Calendar icon",
         spec = fullDate.spec.copy(
             dowStyle = DowStyle.NONE,
-            dateStyle = DateStyle.NONE,
+            dateConfig = plainDate.copy(showDay = false),
             stackMode = true
         )
     )
@@ -53,11 +73,13 @@ object Presets {
     val time24 = Preset(
         id = "time_24",
         label = "Time (24-hour)",
-        spec = fullDate.spec.copy(
+        spec = FormatSpec(
             order = listOf(DisplayElement.TIME),
             dowStyle = DowStyle.NONE,
-            dateStyle = DateStyle.NONE,
-            timeStyle = TimeStyle.H24
+            dateConfig = plainDate.copy(showDay = false),
+            timeConfig = TimeConfig(HourStyle.H24_PADDED, showSeconds = false, amPm = AmPmStyle.NONE),
+            separator = ", ",
+            stackMode = false
         )
     )
 
@@ -65,16 +87,16 @@ object Presets {
         id = "time_12",
         label = "Time (12-hour)",
         spec = time24.spec.copy(
-            timeStyle = TimeStyle.H12,
-            showAmPm = true,
-            leadingZero = false
+            timeConfig = TimeConfig(HourStyle.H12, showSeconds = false, amPm = AmPmStyle.LOWERCASE)
         )
     )
 
     val timeSeconds = Preset(
         id = "time_seconds",
         label = "Time with seconds",
-        spec = time24.spec.copy(showSeconds = true)
+        spec = time24.spec.copy(
+            timeConfig = TimeConfig(HourStyle.H24_PADDED, showSeconds = true, amPm = AmPmStyle.NONE)
+        )
     )
 
     val dateAndTime = Preset(
@@ -83,18 +105,15 @@ object Presets {
         spec = FormatSpec(
             order = listOf(DisplayElement.DOW, DisplayElement.DATE, DisplayElement.TIME),
             dowStyle = DowStyle.SHORT,
-            dateStyle = DateStyle.SHORT,
-            timeStyle = TimeStyle.H24,
-            showSeconds = false,
-            showAmPm = false,
-            leadingZero = true,
+            dateConfig = plainDate.copy(monthStyle = MonthStyle.SHORT),
+            timeConfig = TimeConfig(HourStyle.H24_PADDED, showSeconds = false, amPm = AmPmStyle.NONE),
             separator = " · ",
             stackMode = false
         )
     )
 
     val all: List<Preset> = listOf(
-        fullDate, compactDate, isoDate, calendarIcon,
+        fullDate, compactDate, isoDate, numericDate, calendarIcon,
         time24, time12, timeSeconds, dateAndTime
     )
 

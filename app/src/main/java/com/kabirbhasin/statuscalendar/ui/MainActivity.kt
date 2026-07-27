@@ -13,18 +13,16 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -39,12 +37,22 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.kabirbhasin.statuscalendar.core.format.AmPmStyle
+import com.kabirbhasin.statuscalendar.core.format.DateOrder
+import com.kabirbhasin.statuscalendar.core.format.DisplayElement
+import com.kabirbhasin.statuscalendar.core.format.DowStyle
 import com.kabirbhasin.statuscalendar.core.format.FormatEngine
+import com.kabirbhasin.statuscalendar.core.format.FormatSpec
+import com.kabirbhasin.statuscalendar.core.format.HourStyle
+import com.kabirbhasin.statuscalendar.core.format.MonthStyle
 import com.kabirbhasin.statuscalendar.core.format.Presets
+import com.kabirbhasin.statuscalendar.core.format.YearStyle
 import com.kabirbhasin.statuscalendar.core.prefs.AppSettings
 import com.kabirbhasin.statuscalendar.core.prefs.SettingsRepository
 import com.kabirbhasin.statuscalendar.service.DisplayService
+import com.kabirbhasin.statuscalendar.ui.theme.StatusCalendarTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.ZonedDateTime
@@ -57,24 +65,40 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         val repository = SettingsRepository(applicationContext)
         setContent {
-            MaterialTheme {
+            StatusCalendarTheme {
                 SettingsScreen(repository)
             }
         }
     }
 }
 
+private val elementOrders: List<List<DisplayElement>> = listOf(
+    listOf(DisplayElement.DOW, DisplayElement.DATE, DisplayElement.TIME),
+    listOf(DisplayElement.DOW, DisplayElement.TIME, DisplayElement.DATE),
+    listOf(DisplayElement.DATE, DisplayElement.DOW, DisplayElement.TIME),
+    listOf(DisplayElement.DATE, DisplayElement.TIME, DisplayElement.DOW),
+    listOf(DisplayElement.TIME, DisplayElement.DOW, DisplayElement.DATE),
+    listOf(DisplayElement.TIME, DisplayElement.DATE, DisplayElement.DOW)
+)
+
+private val joiners = listOf(", ", " ", " · ", " - ", " | ")
+private val dateSeparators = listOf("/", "-", ".", " ")
+
 @Composable
 private fun SettingsScreen(repository: SettingsRepository) {
     val settings by repository.flow.collectAsState(initial = null)
     val scope = rememberCoroutineScope()
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
     val current = settings ?: return
+    val spec = current.formatSpec
+
+    fun update(mutate: (FormatSpec) -> FormatSpec) {
+        scope.launch { repository.setFormatSpec(mutate(spec)) }
+    }
 
     val notifPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { }
-
     LaunchedEffect(Unit) {
         if (Build.VERSION.SDK_INT >= 33) {
             notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -87,59 +111,122 @@ private fun SettingsScreen(repository: SettingsRepository) {
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp)
                 .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Text("Status Calendar", style = MaterialTheme.typography.headlineMedium)
 
             PreviewCard(current)
 
-            ToggleRow(
-                label = "Show in status bar",
-                checked = current.displayEnabled
-            ) { enabled ->
+            ToggleRow("Show in status bar", current.displayEnabled) { enabled ->
                 scope.launch {
                     repository.setDisplayEnabled(enabled)
                     if (enabled) DisplayService.start(context) else DisplayService.stop(context)
                 }
             }
-
-            ToggleRow(
-                label = "Notification icon engine",
-                checked = current.notificationEngineEnabled
-            ) { scope.launch { repository.setNotificationEngine(it) } }
-
-            ToggleRow(
-                label = "Start after reboot",
-                checked = current.startOnBoot
-            ) { scope.launch { repository.setStartOnBoot(it) } }
+            ToggleRow("Notification icon engine", current.notificationEngineEnabled) {
+                scope.launch { repository.setNotificationEngine(it) }
+            }
+            ToggleRow("Start after reboot", current.startOnBoot) {
+                scope.launch { repository.setStartOnBoot(it) }
+            }
 
             HorizontalDivider()
-
-            Text("Format", style = MaterialTheme.typography.titleMedium)
-            Presets.all.forEach { preset ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .selectable(
-                            selected = current.formatSpec == preset.spec,
-                            onClick = { scope.launch { repository.setFormatSpec(preset.spec) } }
-                        ),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RadioButton(
-                        selected = current.formatSpec == preset.spec,
-                        onClick = { scope.launch { repository.setFormatSpec(preset.spec) } }
+            Text("Quick presets", style = MaterialTheme.typography.titleMedium)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())) {
+                Presets.all.forEach { preset ->
+                    AssistChip(
+                        onClick = { scope.launch { repository.setFormatSpec(preset.spec) } },
+                        label = { Text(preset.label) }
                     )
-                    Spacer(Modifier.width(8.dp))
-                    Text(preset.label)
                 }
             }
 
             HorizontalDivider()
+            Text("Custom format", style = MaterialTheme.typography.titleMedium)
 
+            CycleRow("Element order",
+                spec.order.joinToString(" → ") { it.name.lowercase() }) {
+                val index = elementOrders.indexOfFirst { it == spec.order }
+                update { it.copy(order = elementOrders[(index + 1).mod(elementOrders.size)]) }
+            }
+            CycleRow("Joiner", "\"${spec.separator}\"") {
+                val index = joiners.indexOf(spec.separator)
+                update { it.copy(separator = joiners[(index + 1).mod(joiners.size)]) }
+            }
+            CycleRow("Day of week", when (spec.dowStyle) {
+                DowStyle.FULL -> "Full (Wednesday)"
+                DowStyle.SHORT -> "Short (Wed)"
+                DowStyle.NARROW -> "Narrow (W)"
+                DowStyle.NONE -> "Hidden"
+            }) { update { it.copy(dowStyle = next(spec.dowStyle)) } }
+
+            Text("Date", style = MaterialTheme.typography.labelLarge)
+            ToggleRow("Show day of month", spec.dateConfig.showDay) { v ->
+                update { it.copy(dateConfig = it.dateConfig.copy(showDay = v)) }
+            }
+            ToggleRow("Ordinal day (1st)", spec.dateConfig.dayOrdinal) { v ->
+                update { it.copy(dateConfig = it.dateConfig.copy(dayOrdinal = v)) }
+            }
+            ToggleRow("Two-digit day (01)", spec.dateConfig.dayPadded) { v ->
+                update { it.copy(dateConfig = it.dateConfig.copy(dayPadded = v)) }
+            }
+            CycleRow("Month", when (spec.dateConfig.monthStyle) {
+                MonthStyle.FULL -> "Full (January)"
+                MonthStyle.SHORT -> "Short (Jan)"
+                MonthStyle.NUMBER_PADDED -> "Number (01)"
+                MonthStyle.NUMBER -> "Number (1)"
+                MonthStyle.NONE -> "Hidden"
+            }) { update { it.copy(dateConfig = it.dateConfig.copy(monthStyle = next(spec.dateConfig.monthStyle))) } }
+            CycleRow("Year", when (spec.dateConfig.yearStyle) {
+                YearStyle.FULL -> "Full (2026)"
+                YearStyle.TWO_DIGIT -> "Short (26)"
+                YearStyle.NONE -> "Hidden"
+            }) { update { it.copy(dateConfig = it.dateConfig.copy(yearStyle = next(spec.dateConfig.yearStyle))) } }
+            CycleRow("Date order", spec.dateConfig.order.name) {
+                update { it.copy(dateConfig = it.dateConfig.copy(order = next(spec.dateConfig.order))) }
+            }
+            CycleRow("Date separator", "\"${spec.dateConfig.separator}\"") {
+                val index = dateSeparators.indexOf(spec.dateConfig.separator)
+                update {
+                    it.copy(dateConfig = it.dateConfig.copy(
+                        separator = dateSeparators[(index + 1).mod(dateSeparators.size)]
+                    ))
+                }
+            }
+
+            Text("Time", style = MaterialTheme.typography.labelLarge)
+            CycleRow("Hours", when (spec.timeConfig.hourStyle) {
+                HourStyle.H24_PADDED -> "24-hour (09)"
+                HourStyle.H24 -> "24-hour (9)"
+                HourStyle.H12_PADDED -> "12-hour (09)"
+                HourStyle.H12 -> "12-hour (9)"
+                HourStyle.NONE -> "Hidden"
+            }) { update { it.copy(timeConfig = it.timeConfig.copy(hourStyle = next(spec.timeConfig.hourStyle))) } }
+            ToggleRow("Seconds", spec.timeConfig.showSeconds) { v ->
+                update { it.copy(timeConfig = it.timeConfig.copy(showSeconds = v)) }
+            }
+            CycleRow("AM/PM", when (spec.timeConfig.amPm) {
+                AmPmStyle.NONE -> "Hidden"
+                AmPmStyle.LOWERCASE -> "am/pm"
+                AmPmStyle.UPPERCASE -> "AM/PM"
+            }) { update { it.copy(timeConfig = it.timeConfig.copy(amPm = next(spec.timeConfig.amPm))) } }
+
+            ToggleRow("Calendar-icon stack", spec.stackMode) { v ->
+                update { it.copy(stackMode = v) }
+            }
+
+            HorizontalDivider()
             BatteryCard()
         }
     }
+}
+
+private inline fun <reified T : Enum<T>> next(value: T): T {
+    val values = enumValues<T>()
+    return values[(value.ordinal + 1) % values.size]
 }
 
 @Composable
@@ -156,8 +243,9 @@ private fun PreviewCard(settings: AppSettings) {
         Column(Modifier.padding(16.dp)) {
             Text("Preview", style = MaterialTheme.typography.labelMedium)
             val text = if (rendered.stackTop != null) {
-                "${rendered.stackTop}\n${rendered.stackBottom}"
-            } else rendered.line
+                "${rendered.stackTop}\n${rendered.stackBottom}" +
+                    if (rendered.line.isNotEmpty()) "\n${rendered.line}" else ""
+            } else rendered.line.ifEmpty { "(nothing selected)" }
             Text(text, style = MaterialTheme.typography.headlineSmall)
         }
     }
@@ -165,17 +253,23 @@ private fun PreviewCard(settings: AppSettings) {
 
 @Composable
 private fun ToggleRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(label, modifier = Modifier.weight(1f))
         Switch(checked = checked, onCheckedChange = onChange)
     }
 }
 
 @Composable
+private fun CycleRow(label: String, value: String, onCycle: () -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, modifier = Modifier.weight(1f))
+        TextButton(onClick = onCycle) { Text(value) }
+    }
+}
+
+@Composable
 private fun BatteryCard() {
+    val context = LocalContext.current
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
             Text("Reliability", style = MaterialTheme.typography.titleMedium)
@@ -184,11 +278,8 @@ private fun BatteryCard() {
                     "from battery optimisation and allow background activity.",
                 style = MaterialTheme.typography.bodyMedium
             )
-            val context = androidx.compose.ui.platform.LocalContext.current
             TextButton(onClick = {
-                context.startActivity(
-                    Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
-                )
+                context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
             }) { Text("Open battery settings") }
         }
     }

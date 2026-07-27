@@ -60,7 +60,7 @@ class DisplayController(
         }
         // The notification icon cannot tick per second; seconds ride the overlay only.
         tickSource.setSecondsWanted(
-            newSettings.formatSpec.showSeconds && newSettings.overlayEngineEnabled
+            newSettings.formatSpec.timeConfig.showSeconds && newSettings.overlayEngineEnabled
         )
         renderNow()
     }
@@ -76,7 +76,8 @@ class DisplayController(
     private fun currentDisplay(secondsCapable: Boolean): RenderedDisplay {
         val current = settings
         val spec = current?.formatSpec?.let {
-            if (secondsCapable) it else it.copy(showSeconds = false)
+            if (secondsCapable) it
+            else it.copy(timeConfig = it.timeConfig.copy(showSeconds = false))
         } ?: com.kabirbhasin.statuscalendar.core.format.Presets.compactDate.spec
         return FormatEngine.render(spec, ZonedDateTime.now(), Locale.getDefault())
     }

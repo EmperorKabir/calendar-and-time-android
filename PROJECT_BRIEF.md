@@ -113,6 +113,16 @@
 6. Context7 for every library/AGP/Jetpack/API question; Superpowers methodology throughout;
    every conclusion evidence-cited.
 
+## 7a. On-device evidence log
+- 2026-07-27 CPH2841 ColorOS 16: notification engine posts (id 1001, channel status_display,
+  importance HIGH, ongoing/silent, FGS specialUse) and live-updates on preset change
+  (title observed flipping to "16:09"). BUT the status bar substitutes the APP LAUNCHER ICON for
+  the small-icon bitmap — rendered text/calendar glyph not visible in the bar (visible in shade).
+  ⇒ On ColorOS the overlay engine is the primary text-in-bar path; notification engine still
+  provides presence + shade content + other-OEM support.
+- Same capture: the SYSTEM clock already showed seconds (4:09:53) on this device — `clock_seconds`
+  behaviour exists on ColorOS 16 (Tier-3 target confirmed real).
+
 ## 8. Open items for the implementation plan (not blockers)
 - Per-OEM verification matrix for `clock_seconds` / `icon_blacklist` honouring (ColorOS 16 first —
   device on hand).

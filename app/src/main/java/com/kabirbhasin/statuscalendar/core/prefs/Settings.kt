@@ -7,12 +7,16 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import com.kabirbhasin.statuscalendar.core.format.DateStyle
+import com.kabirbhasin.statuscalendar.core.format.AmPmStyle
+import com.kabirbhasin.statuscalendar.core.format.DateConfig
+import com.kabirbhasin.statuscalendar.core.format.DateOrder
 import com.kabirbhasin.statuscalendar.core.format.DisplayElement
 import com.kabirbhasin.statuscalendar.core.format.DowStyle
 import com.kabirbhasin.statuscalendar.core.format.FormatSpec
+import com.kabirbhasin.statuscalendar.core.format.HourStyle
+import com.kabirbhasin.statuscalendar.core.format.MonthStyle
 import com.kabirbhasin.statuscalendar.core.format.Presets
-import com.kabirbhasin.statuscalendar.core.format.TimeStyle
+import com.kabirbhasin.statuscalendar.core.format.YearStyle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -45,11 +49,16 @@ class SettingsRepository(private val context: Context) {
 
         val order = stringPreferencesKey("format_order")
         val dowStyle = stringPreferencesKey("format_dow")
-        val dateStyle = stringPreferencesKey("format_date")
-        val timeStyle = stringPreferencesKey("format_time")
+        val showDay = booleanPreferencesKey("format_show_day")
+        val dayPadded = booleanPreferencesKey("format_day_padded")
+        val dayOrdinal = booleanPreferencesKey("format_day_ordinal")
+        val monthStyle = stringPreferencesKey("format_month")
+        val yearStyle = stringPreferencesKey("format_year")
+        val dateOrder = stringPreferencesKey("format_date_order")
+        val dateSeparator = stringPreferencesKey("format_date_separator")
+        val hourStyle = stringPreferencesKey("format_hour")
         val seconds = booleanPreferencesKey("format_seconds")
-        val amPm = booleanPreferencesKey("format_ampm")
-        val leadingZero = booleanPreferencesKey("format_leading_zero")
+        val amPm = stringPreferencesKey("format_ampm")
         val separator = stringPreferencesKey("format_separator")
         val stack = booleanPreferencesKey("format_stack")
 
@@ -61,7 +70,7 @@ class SettingsRepository(private val context: Context) {
     }
 
     val flow: Flow<AppSettings> = context.dataStore.data.map { p ->
-        val default = Presets.compactDate.spec
+        val d = Presets.compactDate.spec
         AppSettings(
             displayEnabled = p[Keys.displayEnabled] ?: false,
             notificationEngineEnabled = p[Keys.notifEngine] ?: true,
@@ -70,15 +79,24 @@ class SettingsRepository(private val context: Context) {
             formatSpec = FormatSpec(
                 order = p[Keys.order]?.split(",")
                     ?.mapNotNull { runCatching { DisplayElement.valueOf(it) }.getOrNull() }
-                    ?.ifEmpty { default.order } ?: default.order,
-                dowStyle = p[Keys.dowStyle]?.let { enumOr(it, default.dowStyle) } ?: default.dowStyle,
-                dateStyle = p[Keys.dateStyle]?.let { enumOr(it, default.dateStyle) } ?: default.dateStyle,
-                timeStyle = p[Keys.timeStyle]?.let { enumOr(it, default.timeStyle) } ?: default.timeStyle,
-                showSeconds = p[Keys.seconds] ?: default.showSeconds,
-                showAmPm = p[Keys.amPm] ?: default.showAmPm,
-                leadingZero = p[Keys.leadingZero] ?: default.leadingZero,
-                separator = p[Keys.separator] ?: default.separator,
-                stackMode = p[Keys.stack] ?: default.stackMode
+                    ?.ifEmpty { d.order } ?: d.order,
+                dowStyle = enumPref(p[Keys.dowStyle], d.dowStyle),
+                dateConfig = DateConfig(
+                    showDay = p[Keys.showDay] ?: d.dateConfig.showDay,
+                    dayPadded = p[Keys.dayPadded] ?: d.dateConfig.dayPadded,
+                    dayOrdinal = p[Keys.dayOrdinal] ?: d.dateConfig.dayOrdinal,
+                    monthStyle = enumPref(p[Keys.monthStyle], d.dateConfig.monthStyle),
+                    yearStyle = enumPref(p[Keys.yearStyle], d.dateConfig.yearStyle),
+                    order = enumPref(p[Keys.dateOrder], d.dateConfig.order),
+                    separator = p[Keys.dateSeparator] ?: d.dateConfig.separator
+                ),
+                timeConfig = com.kabirbhasin.statuscalendar.core.format.TimeConfig(
+                    hourStyle = enumPref(p[Keys.hourStyle], d.timeConfig.hourStyle),
+                    showSeconds = p[Keys.seconds] ?: d.timeConfig.showSeconds,
+                    amPm = enumPref(p[Keys.amPm], d.timeConfig.amPm)
+                ),
+                separator = p[Keys.separator] ?: d.separator,
+                stackMode = p[Keys.stack] ?: d.stackMode
             ),
             overlayStyle = OverlayStyle(
                 offsetX = p[Keys.overlayX] ?: 0,
@@ -90,8 +108,8 @@ class SettingsRepository(private val context: Context) {
         )
     }
 
-    private inline fun <reified T : Enum<T>> enumOr(name: String, fallback: T): T =
-        runCatching { enumValueOf<T>(name) }.getOrDefault(fallback)
+    private inline fun <reified T : Enum<T>> enumPref(name: String?, fallback: T): T =
+        name?.let { runCatching { enumValueOf<T>(it) }.getOrNull() } ?: fallback
 
     suspend fun setDisplayEnabled(value: Boolean) =
         context.dataStore.edit { it[Keys.displayEnabled] = value }
@@ -108,11 +126,16 @@ class SettingsRepository(private val context: Context) {
     suspend fun setFormatSpec(spec: FormatSpec) = context.dataStore.edit {
         it[Keys.order] = spec.order.joinToString(",") { e -> e.name }
         it[Keys.dowStyle] = spec.dowStyle.name
-        it[Keys.dateStyle] = spec.dateStyle.name
-        it[Keys.timeStyle] = spec.timeStyle.name
-        it[Keys.seconds] = spec.showSeconds
-        it[Keys.amPm] = spec.showAmPm
-        it[Keys.leadingZero] = spec.leadingZero
+        it[Keys.showDay] = spec.dateConfig.showDay
+        it[Keys.dayPadded] = spec.dateConfig.dayPadded
+        it[Keys.dayOrdinal] = spec.dateConfig.dayOrdinal
+        it[Keys.monthStyle] = spec.dateConfig.monthStyle.name
+        it[Keys.yearStyle] = spec.dateConfig.yearStyle.name
+        it[Keys.dateOrder] = spec.dateConfig.order.name
+        it[Keys.dateSeparator] = spec.dateConfig.separator
+        it[Keys.hourStyle] = spec.timeConfig.hourStyle.name
+        it[Keys.seconds] = spec.timeConfig.showSeconds
+        it[Keys.amPm] = spec.timeConfig.amPm.name
         it[Keys.separator] = spec.separator
         it[Keys.stack] = spec.stackMode
     }
