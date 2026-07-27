@@ -43,6 +43,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -53,6 +54,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import com.kabirbhasin.statuscalendar.core.format.AmPmStyle
 import com.kabirbhasin.statuscalendar.core.format.DateOrder
@@ -205,7 +209,19 @@ private fun SettingsScreen(repository: SettingsRepository) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            val overlayReady = Settings.canDrawOverlays(context)
+            // Re-checked whenever the screen resumes, so returning from the system
+            // permission page immediately unlocks the text modes.
+            var overlayReady by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
+            val lifecycleOwner = LocalLifecycleOwner.current
+            DisposableEffect(lifecycleOwner) {
+                val observer = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_RESUME) {
+                        overlayReady = Settings.canDrawOverlays(context)
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+            }
             ModeChoice(
                 label = "Compact",
                 description = "A readable icon inside the status bar, beside the other " +
@@ -254,23 +270,25 @@ private fun SettingsScreen(repository: SettingsRepository) {
             ) { scope.launch { repository.setStartOnBoot(it) } }
 
             HorizontalDivider()
-            Text("Quick presets", style = MaterialTheme.typography.titleMedium)
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-            ) {
-                Presets.all.forEach { preset ->
-                    AssistChip(
-                        onClick = { scope.launch { repository.setFormatSpec(preset.spec) } },
-                        label = { Text(preset.label) }
-                    )
+            Text("Presets", style = MaterialTheme.typography.titleMedium)
+            DropdownRow(
+                "Built in presets",
+                "Pick a ready made format.",
+                Presets.all.firstOrNull { it.spec == spec }?.label ?: "Custom",
+                Presets.all.map { it.label }
+            ) { index -> scope.launch { repository.setFormatSpec(Presets.all[index].spec) } }
+            if (current.savedPresets.isNotEmpty()) {
+                DropdownRow(
+                    "Your saved presets",
+                    "Apply one of your own saved formats.",
+                    current.savedPresets.firstOrNull { it.spec == spec }?.name ?: "Choose",
+                    current.savedPresets.map { it.name }
+                ) { index ->
+                    scope.launch { repository.setFormatSpec(current.savedPresets[index].spec) }
                 }
             }
 
-            HorizontalDivider()
-            Text("Your presets", style = MaterialTheme.typography.titleMedium)
+            Text("Save current format", style = MaterialTheme.typography.titleMedium)
             Text(
                 "Save the current format under a name, then bring it back with one tap.",
                 style = MaterialTheme.typography.bodySmall,
