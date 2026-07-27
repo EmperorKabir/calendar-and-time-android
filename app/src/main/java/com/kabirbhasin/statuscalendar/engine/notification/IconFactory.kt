@@ -26,6 +26,9 @@ class IconFactory {
     private var lastKey: String? = null
     private var lastBitmap: Bitmap? = null
 
+    /** Fully transparent icon: the service keeps its notification, but no glyph shows. */
+    fun blank(): Bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+
     fun iconFor(display: RenderedDisplay): Bitmap {
         val key = if (display.stackTop != null) {
             "s|${display.stackTop}|${display.stackBottom}"

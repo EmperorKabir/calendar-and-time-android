@@ -28,6 +28,8 @@ data class OverlayStyle(
     val hideInFullscreen: Boolean
 )
 
+data class SavedPreset(val name: String, val spec: FormatSpec)
+
 data class AppSettings(
     val displayEnabled: Boolean,
     val notificationEngineEnabled: Boolean,
@@ -35,7 +37,8 @@ data class AppSettings(
     val chainedEngineEnabled: Boolean,
     val startOnBoot: Boolean,
     val formatSpec: FormatSpec,
-    val overlayStyle: OverlayStyle
+    val overlayStyle: OverlayStyle,
+    val savedPresets: List<SavedPreset>
 )
 
 private val Context.dataStore by preferencesDataStore(name = "settings")
@@ -70,6 +73,7 @@ class SettingsRepository(private val context: Context) {
         val overlaySize = floatPreferencesKey("overlay_size")
         val overlayColor = stringPreferencesKey("overlay_color")
         val overlayHideFullscreen = booleanPreferencesKey("overlay_hide_fullscreen")
+        val savedPresets = stringPreferencesKey("saved_presets")
     }
 
     val flow: Flow<AppSettings> = context.dataStore.data.map { p ->
@@ -109,8 +113,77 @@ class SettingsRepository(private val context: Context) {
                 textSizeSp = p[Keys.overlaySize] ?: 13f,
                 textColor = p[Keys.overlayColor]?.toLongOrNull(16) ?: 0xFFFFFFFF,
                 hideInFullscreen = p[Keys.overlayHideFullscreen] ?: true
-            )
+            ),
+            savedPresets = decodePresets(p[Keys.savedPresets])
         )
+    }
+
+    suspend fun savePreset(name: String, spec: FormatSpec) = context.dataStore.edit { prefs ->
+        val existing = decodePresets(prefs[Keys.savedPresets])
+            .filterNot { it.name.equals(name, ignoreCase = true) }
+        prefs[Keys.savedPresets] = encodePresets(existing + SavedPreset(name, spec))
+    }
+
+    suspend fun deletePreset(name: String) = context.dataStore.edit { prefs ->
+        val remaining = decodePresets(prefs[Keys.savedPresets]).filterNot { it.name == name }
+        prefs[Keys.savedPresets] = encodePresets(remaining)
+    }
+
+    private fun encodePresets(presets: List<SavedPreset>): String =
+        presets.joinToString("") { preset ->
+            val s = preset.spec
+            listOf(
+                preset.name,
+                s.order.joinToString("+") { it.name },
+                s.dowStyle.name,
+                s.dateConfig.showDay.toString(),
+                s.dateConfig.dayPadded.toString(),
+                s.dateConfig.dayOrdinal.toString(),
+                s.dateConfig.ordinalSuperscript.toString(),
+                s.dateConfig.monthStyle.name,
+                s.dateConfig.yearStyle.name,
+                s.dateConfig.order.name,
+                s.dateConfig.separator,
+                s.timeConfig.hourStyle.name,
+                s.timeConfig.showSeconds.toString(),
+                s.timeConfig.amPm.name,
+                s.separator,
+                s.stackMode.toString()
+            ).joinToString("")
+        }
+
+    private fun decodePresets(raw: String?): List<SavedPreset> {
+        if (raw.isNullOrEmpty()) return emptyList()
+        return raw.split("").mapNotNull { entry ->
+            val f = entry.split("")
+            if (f.size != 16) return@mapNotNull null
+            runCatching {
+                SavedPreset(
+                    name = f[0],
+                    spec = FormatSpec(
+                        order = f[1].split("+").map { DisplayElement.valueOf(it) },
+                        dowStyle = DowStyle.valueOf(f[2]),
+                        dateConfig = DateConfig(
+                            showDay = f[3].toBoolean(),
+                            dayPadded = f[4].toBoolean(),
+                            dayOrdinal = f[5].toBoolean(),
+                            ordinalSuperscript = f[6].toBoolean(),
+                            monthStyle = MonthStyle.valueOf(f[7]),
+                            yearStyle = YearStyle.valueOf(f[8]),
+                            order = DateOrder.valueOf(f[9]),
+                            separator = f[10]
+                        ),
+                        timeConfig = com.kabirbhasin.statuscalendar.core.format.TimeConfig(
+                            hourStyle = HourStyle.valueOf(f[11]),
+                            showSeconds = f[12].toBoolean(),
+                            amPm = AmPmStyle.valueOf(f[13])
+                        ),
+                        separator = f[14],
+                        stackMode = f[15].toBoolean()
+                    )
+                )
+            }.getOrNull()
+        }
     }
 
     private inline fun <reified T : Enum<T>> enumPref(name: String?, fallback: T): T =

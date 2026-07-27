@@ -23,6 +23,14 @@ class NotificationEngine(private val context: Context) : DisplayEngine {
     private val iconFactory = IconFactory()
     private var lastRendered: RenderedDisplay? = null
     private var active = false
+    private var iconVisible = true
+
+    /** When false the notification persists (the service needs it) with no visible glyph. */
+    fun setIconVisible(visible: Boolean) {
+        if (iconVisible == visible) return
+        iconVisible = visible
+        lastRendered?.let { post(it) }
+    }
 
     override fun start() {
         ensureChannel()
@@ -36,7 +44,7 @@ class NotificationEngine(private val context: Context) : DisplayEngine {
     }
 
     override fun render(display: RenderedDisplay) {
-        if (!active || display == lastRendered) return
+        if (display == lastRendered) return
         lastRendered = display
         post(display)
     }
@@ -54,7 +62,11 @@ class NotificationEngine(private val context: Context) : DisplayEngine {
             "${display.stackTop} ${display.stackBottom}"
         } else display.line
         return NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(IconCompat.createWithBitmap(iconFactory.iconFor(display)))
+            .setSmallIcon(
+                IconCompat.createWithBitmap(
+                    if (iconVisible) iconFactory.iconFor(display) else iconFactory.blank()
+                )
+            )
             .setContentTitle(contentText)
             .setContentIntent(contentIntent)
             .setOngoing(true)

@@ -36,7 +36,9 @@ class ChainedIconEngine(private val context: Context) : DisplayEngine {
     override fun stop() {
         active = false
         val manager = NotificationManagerCompat.from(context)
-        lastChunks.indices.forEach { manager.cancel(BASE_ID + it) }
+        // Clear the whole reserved range: chunks posted before a process restart
+        // are not in lastChunks and would otherwise linger in the shade.
+        (0 until MAX_CHUNKS).forEach { manager.cancel(BASE_ID + it) }
         lastChunks = emptyList()
     }
 

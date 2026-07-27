@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.graphics.asImageBitmap
+import com.kabirbhasin.statuscalendar.engine.notification.ChainedIconEngine
 import com.kabirbhasin.statuscalendar.engine.notification.IconFactory
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -33,6 +34,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
@@ -149,6 +151,13 @@ private fun SettingsScreen(repository: SettingsRepository) {
     LaunchedEffect(current.displayEnabled) {
         if (current.displayEnabled) DisplayService.start(context)
     }
+    // Chunks posted by the chained mode outlive the service, so clear any
+    // that remain whenever the mode is off.
+    LaunchedEffect(current.chainedEngineEnabled, current.displayEnabled) {
+        if (!current.chainedEngineEnabled || !current.displayEnabled) {
+            ChainedIconEngine(context).stop()
+        }
+    }
 
     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
         Column(
@@ -255,6 +264,51 @@ private fun SettingsScreen(repository: SettingsRepository) {
                         onClick = { scope.launch { repository.setFormatSpec(preset.spec) } },
                         label = { Text(preset.label) }
                     )
+                }
+            }
+
+            HorizontalDivider()
+            Text("Your presets", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Save the current format under a name, then bring it back with one tap.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            var presetName by remember { mutableStateOf("") }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = presetName,
+                    onValueChange = { presetName = it },
+                    singleLine = true,
+                    label = { Text("Preset name") },
+                    modifier = Modifier.weight(1f)
+                )
+                OutlinedButton(
+                    onClick = {
+                        val name = presetName.trim()
+                        if (name.isNotEmpty()) {
+                            scope.launch { repository.savePreset(name, spec) }
+                            presetName = ""
+                        }
+                    }
+                ) { Text("Save") }
+            }
+            current.savedPresets.forEach { saved ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(saved.name, modifier = Modifier.weight(1f))
+                    TextButton(onClick = {
+                        scope.launch { repository.setFormatSpec(saved.spec) }
+                    }) { Text("Apply") }
+                    TextButton(onClick = {
+                        scope.launch { repository.deletePreset(saved.name) }
+                    }) { Text("Delete") }
                 }
             }
 

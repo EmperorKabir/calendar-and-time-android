@@ -55,14 +55,17 @@ class DisplayController(
     private fun applySettings(newSettings: AppSettings) {
         settings = newSettings
         if (!newSettings.displayEnabled) {
+            // Clear every engine's output before the host stops, otherwise
+            // chained chunks posted earlier stay in the shade.
+            chainedEngine.stop()
+            overlayEngine.stop()
             onStopRequested?.invoke()
             return
         }
-        if (newSettings.notificationEngineEnabled) {
-            notificationEngine.start()
-        } else {
-            notificationEngine.stop()
-        }
+        // The foreground service owns this notification, so it always runs; the
+        // toggle controls whether its icon draws anything.
+        notificationEngine.start()
+        notificationEngine.setIconVisible(newSettings.notificationEngineEnabled)
         if (newSettings.chainedEngineEnabled) chainedEngine.start() else chainedEngine.stop()
         if (newSettings.overlayEngineEnabled && overlayEngine.canDraw()) {
             overlayEngine.start()
@@ -80,9 +83,7 @@ class DisplayController(
     private fun renderNow() {
         val current = settings ?: return
         if (!current.displayEnabled) return
-        if (current.notificationEngineEnabled) {
-            notificationEngine.render(currentDisplay(secondsCapable = false))
-        }
+        notificationEngine.render(currentDisplay(secondsCapable = false))
         if (current.chainedEngineEnabled) {
             chainedEngine.render(currentDisplay(secondsCapable = false))
         }

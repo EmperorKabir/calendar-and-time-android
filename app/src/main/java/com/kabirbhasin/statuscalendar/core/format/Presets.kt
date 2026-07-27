@@ -11,6 +11,23 @@ object Presets {
     )
     private val noTime = TimeConfig(HourStyle.NONE, showSeconds = false, amPm = AmPmStyle.NONE)
 
+    val fullUk = Preset(
+        id = "full_uk",
+        label = "Full UK",
+        spec = FormatSpec(
+            order = listOf(DisplayElement.DOW, DisplayElement.DATE, DisplayElement.TIME),
+            dowStyle = DowStyle.FULL,
+            dateConfig = DateConfig(
+                showDay = true, dayPadded = false, dayOrdinal = true,
+                ordinalSuperscript = true, monthStyle = MonthStyle.FULL,
+                yearStyle = YearStyle.FULL, order = DateOrder.DMY, separator = "/"
+            ),
+            timeConfig = TimeConfig(HourStyle.H24_PADDED, showSeconds = false, amPm = AmPmStyle.NONE),
+            separator = ", ",
+            stackMode = false
+        )
+    )
+
     val fullDate = Preset(
         id = "full_date",
         label = "Full date",
@@ -113,7 +130,7 @@ object Presets {
     )
 
     val all: List<Preset> = listOf(
-        fullDate, compactDate, isoDate, numericDate, calendarIcon,
+        fullUk, fullDate, compactDate, isoDate, numericDate, calendarIcon,
         time24, time12, timeSeconds, dateAndTime
     )
 
