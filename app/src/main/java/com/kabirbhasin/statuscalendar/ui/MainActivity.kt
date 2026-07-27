@@ -36,6 +36,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
@@ -64,6 +65,7 @@ import com.kabirbhasin.statuscalendar.core.format.MonthStyle
 import com.kabirbhasin.statuscalendar.core.format.Presets
 import com.kabirbhasin.statuscalendar.core.format.YearStyle
 import com.kabirbhasin.statuscalendar.core.prefs.AppSettings
+import com.kabirbhasin.statuscalendar.core.prefs.DisplayMode
 import com.kabirbhasin.statuscalendar.core.prefs.SettingsRepository
 import com.kabirbhasin.statuscalendar.service.DisplayService
 import com.kabirbhasin.statuscalendar.ui.theme.StatusCalendarTheme
@@ -197,58 +199,41 @@ private fun SettingsScreen(repository: SettingsRepository) {
                 }
             }
             HorizontalDivider()
+            Text("How it should appear", style = MaterialTheme.typography.titleMedium)
             Text(
-                "Icon options (inside the status bar)",
-                style = MaterialTheme.typography.titleMedium
+                "These choices are mutually exclusive, so pick the one that suits you.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            ToggleRow(
-                "Icon option",
-                "A genuine element of the system status bar, drawn by Android itself in the " +
-                    "same row as other apps' icons. Text is scaled automatically to fit the " +
-                    "slot, so a date such as \"Mon 27 Jul\" stays readable. Some phones, " +
-                    "including OPPO and OnePlus, substitute the app logo instead; on those, " +
-                    "use system clock integration or the overlay.",
-                current.notificationEngineEnabled
-            ) { scope.launch { repository.setNotificationEngine(it) } }
-            ToggleRow(
-                "Multi icon option (experimental)",
-                "Splits your text across several notifications to claim extra icon slots. " +
-                    "On Android 14 and newer the system merges all of an app's icons into a " +
-                    "single slot, so this only adds entries to your notification list without " +
-                    "adding icons. It remains available for older versions of Android, and for " +
-                    "manufacturer builds that still show one slot per notification. Leave it " +
-                    "switched off unless you have confirmed that it helps on your phone.",
-                current.chainedEngineEnabled
-            ) { scope.launch { repository.setChainedEngine(it) } }
-            val slotEngine = remember { SlotEngine(context) }
-            val installed = remember(current) { slotEngine.installedSlots().size }
-            ToggleRow(
-                "Extra icon slots",
-                if (installed > 0)
-                    "$installed companion app(s) installed, giving $installed extra icon(s) " +
-                        "inside the status bar. Your text is split across them, so longer " +
-                        "formats fit without any overlay."
+            val overlayReady = Settings.canDrawOverlays(context)
+            ModeChoice(
+                label = "Compact",
+                description = "A readable icon inside the status bar, beside the other " +
+                    "app icons. Long formats are split over two rows automatically.",
+                selected = current.displayMode == DisplayMode.COMPACT,
+                enabled = true
+            ) { scope.launch { repository.setDisplayMode(DisplayMode.COMPACT) } }
+            ModeChoice(
+                label = "Full text",
+                description = if (overlayReady)
+                    "Your whole format, any length, with live seconds. Drawn over the " +
+                        "status bar, so it is hidden on the lock screen."
                 else
-                    "Android gives each app one icon slot. Install the companion slot apps " +
-                        "to gain more real icons in the status bar, so longer formats fit " +
-                        "without an overlay. None are installed yet.",
-                current.slotEngineEnabled
-            ) { scope.launch { repository.setSlotEngine(it) } }
-
-            HorizontalDivider()
-            Text(
-                "Text option (drawn over the status bar)",
-                style = MaterialTheme.typography.titleMedium
-            )
-            ToggleRow(
-                "Text option",
-                "For formats the status bar itself cannot hold. Your text is drawn on top of " +
-                    "the bar area at any length, with live seconds if you want them. Because " +
-                    "it sits above the bar rather than inside it, the text is hidden on the " +
-                    "lock screen and in fullscreen apps.",
-                current.overlayEngineEnabled
-            ) { scope.launch { repository.setOverlayEngine(it) } }
-            if (current.overlayEngineEnabled && !Settings.canDrawOverlays(context)) {
+                    "Needs permission to draw over other apps before it can be chosen.",
+                selected = current.displayMode == DisplayMode.FULL_TEXT,
+                enabled = overlayReady
+            ) { scope.launch { repository.setDisplayMode(DisplayMode.FULL_TEXT) } }
+            ModeChoice(
+                label = "Both",
+                description = if (overlayReady)
+                    "The icon and the full text together. The text is placed clear of " +
+                        "the clock so the two do not overlap."
+                else
+                    "Needs permission to draw over other apps before it can be chosen.",
+                selected = current.displayMode == DisplayMode.BOTH,
+                enabled = overlayReady
+            ) { scope.launch { repository.setDisplayMode(DisplayMode.BOTH) } }
+            if (!overlayReady) {
                 TextButton(onClick = {
                     context.startActivity(
                         Intent(
@@ -256,11 +241,12 @@ private fun SettingsScreen(repository: SettingsRepository) {
                             Uri.parse("package:${context.packageName}")
                         )
                     )
-                }) { Text("Grant \"display over other apps\" to enable the overlay") }
+                }) { Text("Grant permission to draw over other apps") }
             }
-            if (current.overlayEngineEnabled) {
+            if (current.displayMode != DisplayMode.COMPACT && overlayReady) {
                 OverlayCalibration(current, repository)
             }
+
             ToggleRow(
                 "Start after reboot",
                 "Bring the display back automatically whenever the phone restarts.",
@@ -631,7 +617,13 @@ private fun PreviewCard(settings: AppSettings) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("What each mode will show", style = MaterialTheme.typography.titleMedium)
 
-            Text("Icon option", style = MaterialTheme.typography.labelLarge)
+            val iconOn = settings.displayMode != DisplayMode.FULL_TEXT
+            Text(
+                if (iconOn) "Compact icon" else "Compact icon (not selected)",
+                style = MaterialTheme.typography.labelLarge,
+                color = if (iconOn) MaterialTheme.colorScheme.onSurface
+                else MaterialTheme.colorScheme.onSurfaceVariant
+            )
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -673,7 +665,13 @@ private fun PreviewCard(settings: AppSettings) {
 
             HorizontalDivider()
 
-            Text("Text option", style = MaterialTheme.typography.labelLarge)
+            val textOn = settings.displayMode != DisplayMode.COMPACT
+            Text(
+                if (textOn) "Full text" else "Full text (not selected)",
+                style = MaterialTheme.typography.labelLarge,
+                color = if (textOn) MaterialTheme.colorScheme.onSurface
+                else MaterialTheme.colorScheme.onSurfaceVariant
+            )
             val overlayText = if (rendered.stackTop != null) {
                 listOf(rendered.stackTop, rendered.stackBottom, rendered.line.ifEmpty { null })
                     .filterNotNull().joinToString(" ")
@@ -681,6 +679,34 @@ private fun PreviewCard(settings: AppSettings) {
             Text(overlayText, style = MaterialTheme.typography.headlineSmall)
             Text(
                 "Shown in full, on one line, exactly as written above.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun ModeChoice(
+    label: String,
+    description: String,
+    selected: Boolean,
+    enabled: Boolean,
+    onSelect: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        RadioButton(selected = selected, onClick = onSelect, enabled = enabled)
+        Column(Modifier.weight(1f).padding(start = 8.dp)) {
+            Text(
+                label,
+                color = if (enabled) MaterialTheme.colorScheme.onSurface
+                else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                description,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

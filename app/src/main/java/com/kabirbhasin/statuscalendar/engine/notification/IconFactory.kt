@@ -39,15 +39,40 @@ class IconFactory {
 
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        if (display.stackTop != null && display.stackBottom != null) {
-            drawStack(canvas, display.stackTop, display.stackBottom)
-        } else {
-            drawLine(canvas, display.line)
+        val stackTop = display.stackTop
+        val stackBottom = display.stackBottom
+        when {
+            stackTop != null && stackBottom != null -> drawStack(canvas, stackTop, stackBottom)
+            // A single line that would render below the legibility floor is split
+            // across two rows rather than shrunk into an unreadable smear.
+            tooSmallForOneLine(display.line) -> splitInTwo(display.line)
+                .let { drawStack(canvas, it.first, it.second) }
+            else -> drawLine(canvas, display.line)
         }
 
         lastKey = key
         lastBitmap = bitmap
         return bitmap
+    }
+
+    /** Below this the glyphs stop being readable in a 24dp slot. */
+    private val minLegibleTextSize = size * 0.34f
+
+    private fun tooSmallForOneLine(text: String): Boolean {
+        if (text.isEmpty()) return false
+        fitText(text, maxWidth = size * 0.96f, maxHeight = size * 0.62f)
+        return paint.textSize < minLegibleTextSize
+    }
+
+    /** Splits on the middle space so both rows stay whole words where possible. */
+    private fun splitInTwo(text: String): Pair<String, String> {
+        val words = text.split(" ").filter { it.isNotEmpty() }
+        if (words.size < 2) {
+            val half = (text.length + 1) / 2
+            return text.take(half) to text.drop(half)
+        }
+        val mid = (words.size + 1) / 2
+        return words.take(mid).joinToString(" ") to words.drop(mid).joinToString(" ")
     }
 
     private fun drawLine(canvas: Canvas, text: String) {

@@ -28,6 +28,8 @@ data class OverlayStyle(
     val hideInFullscreen: Boolean
 )
 
+enum class DisplayMode { COMPACT, FULL_TEXT, BOTH }
+
 data class SavedPreset(val name: String, val spec: FormatSpec)
 
 data class AppSettings(
@@ -36,6 +38,7 @@ data class AppSettings(
     val overlayEngineEnabled: Boolean,
     val chainedEngineEnabled: Boolean,
     val slotEngineEnabled: Boolean,
+    val displayMode: DisplayMode,
     val startOnBoot: Boolean,
     val formatSpec: FormatSpec,
     val overlayStyle: OverlayStyle,
@@ -52,6 +55,7 @@ class SettingsRepository(private val context: Context) {
         val overlayEngine = booleanPreferencesKey("engine_overlay")
         val chainedEngine = booleanPreferencesKey("engine_chained")
         val slotEngine = booleanPreferencesKey("engine_slots")
+        val displayMode = stringPreferencesKey("display_mode")
         val startOnBoot = booleanPreferencesKey("start_on_boot")
 
         val order = stringPreferencesKey("format_order")
@@ -82,10 +86,11 @@ class SettingsRepository(private val context: Context) {
         val d = Presets.compactDate.spec
         AppSettings(
             displayEnabled = p[Keys.displayEnabled] ?: false,
-            notificationEngineEnabled = p[Keys.notifEngine] ?: true,
-            overlayEngineEnabled = p[Keys.overlayEngine] ?: false,
-            chainedEngineEnabled = p[Keys.chainedEngine] ?: false,
+            notificationEngineEnabled = enumPref(p[Keys.displayMode], DisplayMode.COMPACT) != DisplayMode.FULL_TEXT,
+            overlayEngineEnabled = enumPref(p[Keys.displayMode], DisplayMode.COMPACT) != DisplayMode.COMPACT,
+            chainedEngineEnabled = false,
             slotEngineEnabled = p[Keys.slotEngine] ?: true,
+            displayMode = enumPref(p[Keys.displayMode], DisplayMode.COMPACT),
             startOnBoot = p[Keys.startOnBoot] ?: true,
             formatSpec = FormatSpec(
                 order = p[Keys.order]?.split(",")
@@ -111,7 +116,7 @@ class SettingsRepository(private val context: Context) {
                 stackMode = p[Keys.stack] ?: d.stackMode
             ),
             overlayStyle = OverlayStyle(
-                offsetX = p[Keys.overlayX] ?: 0,
+                offsetX = p[Keys.overlayX] ?: 420,
                 offsetY = p[Keys.overlayY] ?: 0,
                 textSizeSp = p[Keys.overlaySize] ?: 13f,
                 textColor = p[Keys.overlayColor]?.toLongOrNull(16) ?: 0xFFFFFFFF,
@@ -203,6 +208,9 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setChainedEngine(value: Boolean) =
         context.dataStore.edit { it[Keys.chainedEngine] = value }
+
+    suspend fun setDisplayMode(mode: DisplayMode) =
+        context.dataStore.edit { it[Keys.displayMode] = mode.name }
 
     suspend fun setSlotEngine(value: Boolean) =
         context.dataStore.edit { it[Keys.slotEngine] = value }
