@@ -1,0 +1,35 @@
+# Gradle
+.gradle/
+build/
+**/build/
+
+# Local configuration (machine-specific, never committed)
+local.properties
+
+# Signing material and secrets — never committed
+*.jks
+*.keystore
+keystore.properties
+signing.properties
+secrets.properties
+*.pepk
+google-services.json
+play-service-account*.json
+*api_key*
+*.pem
+
+# IDE
+.idea/
+*.iml
+.vscode/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs and local output
+*.log
+*.hprof
