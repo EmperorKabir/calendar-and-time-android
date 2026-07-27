@@ -152,6 +152,20 @@ private fun SettingsScreen(repository: SettingsRepository) {
 
             PreviewCard(current)
 
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("Display modes", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "Android only lets an app put two things inside the real status bar: " +
+                            "notification icons, and the phone's own clock. Each mode below " +
+                            "trades length, fidelity and shade clutter differently — enable the " +
+                            "combination that suits your phone.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
             ToggleRow(
                 "Show in status bar",
                 "Master switch for the whole display.",
@@ -169,9 +183,17 @@ private fun SettingsScreen(repository: SettingsRepository) {
                 current.notificationEngineEnabled
             ) { scope.launch { repository.setNotificationEngine(it) } }
             ToggleRow(
+                "Chained text icons (experimental)",
+                "Splits longer text across several status bar icons so it sits genuinely " +
+                    "IN the bar. Needed because one icon slot only fits a few characters. " +
+                    "Cost: one notification entry per chunk, and some phones cap icon count.",
+                current.chainedEngineEnabled
+            ) { scope.launch { repository.setChainedEngine(it) } }
+            ToggleRow(
                 "Text overlay",
-                "Draws your text on top of the status bar area. Shows any format, " +
-                    "including seconds, on every phone. Not visible on the lock screen.",
+                "Last resort for formats the bar cannot hold: draws your text over the bar " +
+                    "area. Any length plus live seconds, but it is painted on top rather than " +
+                    "part of the bar, so it is hidden on the lock screen and in fullscreen apps.",
                 current.overlayEngineEnabled
             ) { scope.launch { repository.setOverlayEngine(it) } }
             if (current.overlayEngineEnabled && !Settings.canDrawOverlays(context)) {
@@ -382,6 +404,12 @@ private fun SystemIntegrationCard() {
                     "Remove the phone's clock so this app's display takes its place.",
                     hidden
                 ) { on -> if (tweaks.setSystemClockHidden(on)) hidden = on }
+                var h24 by remember { mutableStateOf(tweaks.is24Hour()) }
+                ToggleRow(
+                    "24-hour system clock",
+                    "Switches the whole phone between 12-hour and 24-hour time.",
+                    h24
+                ) { on -> if (tweaks.set24Hour(on)) h24 = on }
             }
             val oem = remember { com.kabirbhasin.statuscalendar.core.oem.OemProfile.detect() }
             Text("Your device: ${oem.label}", style = MaterialTheme.typography.labelLarge)

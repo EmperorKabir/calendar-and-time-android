@@ -46,6 +46,16 @@ class SystemTweaks(private val context: Context) {
         )
     }
 
+    /** System-wide 12/24-hour clock format (affects the phone's own clock). */
+    fun is24Hour(): Boolean =
+        Settings.System.getString(context.contentResolver, Settings.System.TIME_12_24) == "24"
+
+    fun set24Hour(on: Boolean): Boolean = write {
+        Settings.System.putString(
+            context.contentResolver, Settings.System.TIME_12_24, if (on) "24" else "12"
+        )
+    }
+
     private fun blacklist(): Set<String> =
         Settings.Secure.getString(context.contentResolver, ICON_BLACKLIST)
             .orEmpty()

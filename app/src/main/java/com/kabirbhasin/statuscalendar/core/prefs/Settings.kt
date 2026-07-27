@@ -32,6 +32,7 @@ data class AppSettings(
     val displayEnabled: Boolean,
     val notificationEngineEnabled: Boolean,
     val overlayEngineEnabled: Boolean,
+    val chainedEngineEnabled: Boolean,
     val startOnBoot: Boolean,
     val formatSpec: FormatSpec,
     val overlayStyle: OverlayStyle
@@ -45,6 +46,7 @@ class SettingsRepository(private val context: Context) {
         val displayEnabled = booleanPreferencesKey("display_enabled")
         val notifEngine = booleanPreferencesKey("engine_notification")
         val overlayEngine = booleanPreferencesKey("engine_overlay")
+        val chainedEngine = booleanPreferencesKey("engine_chained")
         val startOnBoot = booleanPreferencesKey("start_on_boot")
 
         val order = stringPreferencesKey("format_order")
@@ -76,6 +78,7 @@ class SettingsRepository(private val context: Context) {
             displayEnabled = p[Keys.displayEnabled] ?: false,
             notificationEngineEnabled = p[Keys.notifEngine] ?: true,
             overlayEngineEnabled = p[Keys.overlayEngine] ?: false,
+            chainedEngineEnabled = p[Keys.chainedEngine] ?: false,
             startOnBoot = p[Keys.startOnBoot] ?: true,
             formatSpec = FormatSpec(
                 order = p[Keys.order]?.split(",")
@@ -121,6 +124,9 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setOverlayEngine(value: Boolean) =
         context.dataStore.edit { it[Keys.overlayEngine] = value }
+
+    suspend fun setChainedEngine(value: Boolean) =
+        context.dataStore.edit { it[Keys.chainedEngine] = value }
 
     suspend fun setStartOnBoot(value: Boolean) =
         context.dataStore.edit { it[Keys.startOnBoot] = value }

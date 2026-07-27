@@ -26,6 +26,8 @@ class DisplayController(
 
     val notificationEngine = NotificationEngine(context)
     val overlayEngine = com.kabirbhasin.statuscalendar.engine.overlay.OverlayEngine(context)
+    val chainedEngine =
+        com.kabirbhasin.statuscalendar.engine.notification.ChainedIconEngine(context)
     private val repository = SettingsRepository(context)
     private val tickSource = TickSource(context, onRender = ::renderNow)
 
@@ -42,6 +44,7 @@ class DisplayController(
     fun stop() {
         tickSource.stop()
         notificationEngine.stop()
+        chainedEngine.stop()
         overlayEngine.stop()
     }
 
@@ -60,6 +63,7 @@ class DisplayController(
         } else {
             notificationEngine.stop()
         }
+        if (newSettings.chainedEngineEnabled) chainedEngine.start() else chainedEngine.stop()
         if (newSettings.overlayEngineEnabled && overlayEngine.canDraw()) {
             overlayEngine.start()
             overlayEngine.applyStyle(newSettings.overlayStyle)
@@ -78,6 +82,9 @@ class DisplayController(
         if (!current.displayEnabled) return
         if (current.notificationEngineEnabled) {
             notificationEngine.render(currentDisplay(secondsCapable = false))
+        }
+        if (current.chainedEngineEnabled) {
+            chainedEngine.render(currentDisplay(secondsCapable = false))
         }
         if (current.overlayEngineEnabled) {
             overlayEngine.render(currentDisplay(secondsCapable = true))
