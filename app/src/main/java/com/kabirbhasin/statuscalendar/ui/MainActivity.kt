@@ -642,9 +642,9 @@ private fun PreviewCard(settings: AppSettings) {
             val iconWarning = when {
                 iconDisplay.stackTop != null -> null
                 iconDisplay.line.length > 6 ->
-                    "This is long for one icon slot, so it is shrunk to fit and may be hard " +
-                        "to read. Turn on the calendar stack, shorten the format, or use the " +
-                        "text overlay."
+                    "Too long for one row, so it is split over two rows to stay readable. " +
+                        "Shorten the format, or choose Full text, if you would rather have " +
+                        "it on a single line."
                 iconDisplay.line.isEmpty() -> "Nothing selected to show."
                 else -> null
             }
