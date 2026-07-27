@@ -630,11 +630,11 @@ private fun PreviewCard(settings: AppSettings) {
             ) {
                 Image(
                     bitmap = bitmap.asImageBitmap(),
-                    contentDescription = "How the icon will look in the status bar",
+                    contentDescription = "Live representation of the compact icon",
                     modifier = Modifier.size(26.dp)
                 )
                 Text(
-                    "Actual size in your status bar",
+                    "Live representation of the compact icon in your status bar",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
