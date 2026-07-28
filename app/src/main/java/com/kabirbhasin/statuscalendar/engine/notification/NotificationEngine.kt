@@ -17,6 +17,7 @@ class NotificationEngine(private val context: Context) : DisplayEngine {
 
     companion object {
         const val CHANNEL_ID = "status_display"
+        const val SILENT_CHANNEL_ID = "status_service"
         const val NOTIFICATION_ID = 1001
     }
 
@@ -61,7 +62,10 @@ class NotificationEngine(private val context: Context) : DisplayEngine {
         val contentText = if (display.stackTop != null) {
             "${display.stackTop} ${display.stackBottom}"
         } else display.line
-        return NotificationCompat.Builder(context, CHANNEL_ID)
+        return NotificationCompat.Builder(
+            context,
+            if (iconVisible) CHANNEL_ID else SILENT_CHANNEL_ID
+        )
             .setSmallIcon(
                 IconCompat.createWithBitmap(
                     if (iconVisible) iconFactory.iconFor(display) else iconFactory.blank()
@@ -88,6 +92,19 @@ class NotificationEngine(private val context: Context) : DisplayEngine {
 
     private fun ensureChannel() {
         val manager = context.getSystemService(NotificationManager::class.java)
+        // Minimum importance keeps the service alive without claiming an icon slot.
+        manager.createNotificationChannel(
+            NotificationChannel(
+                SILENT_CHANNEL_ID,
+                "Background service",
+                NotificationManager.IMPORTANCE_MIN
+            ).apply {
+                setSound(null, null)
+                enableVibration(false)
+                setShowBadge(false)
+                description = "Keeps the display running with no status bar icon"
+            }
+        )
         val channel = NotificationChannel(
             CHANNEL_ID,
             "Status bar display",

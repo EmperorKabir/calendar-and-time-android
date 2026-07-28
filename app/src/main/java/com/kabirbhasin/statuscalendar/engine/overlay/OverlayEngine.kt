@@ -60,6 +60,13 @@ class OverlayEngine(private val context: Context) : DisplayEngine {
         runCatching { windowManager.updateViewLayout(current, layoutParams()) }
     }
 
+    /** Height of the status bar, so text sits inside it rather than above it. */
+    private fun statusBarHeight(): Int {
+        val resourceId = context.resources
+            .getIdentifier("status_bar_height", "dimen", "android")
+        return if (resourceId > 0) context.resources.getDimensionPixelSize(resourceId) else 0
+    }
+
     private fun layoutParams() = WindowManager.LayoutParams(
         WindowManager.LayoutParams.WRAP_CONTENT,
         WindowManager.LayoutParams.WRAP_CONTENT,
@@ -72,6 +79,9 @@ class OverlayEngine(private val context: Context) : DisplayEngine {
     ).apply {
         gravity = Gravity.TOP or Gravity.START
         x = style.offsetX
-        y = style.offsetY
+        // Centre the text within the status bar, then apply the user's nudge.
+        val barHeight = statusBarHeight()
+        val textHeight = (style.textSizeSp * context.resources.displayMetrics.scaledDensity).toInt()
+        y = ((barHeight - textHeight) / 2).coerceAtLeast(0) + style.offsetY
     }
 }

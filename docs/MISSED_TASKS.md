@@ -61,6 +61,18 @@ user's request after repeated quality failures.
 26. Shipped a preview that showed the configuration rather than what each engine actually
     renders, until corrected.
 
+## Added 2026-07-28 (user findings)
+27. **Overlay is unsuitable as the primary long-format path.** Punch hole cameras, notches,
+    curved edges and foldable hinges all move or occupy the status bar strip, and the
+    overlay cannot know about them reliably. The companion slot apps must become the
+    supported way to fit longer text, with the overlay demoted to a last resort.
+28. **Companion slot work is unfinished.** Built and proven to post from separate packages,
+    but blocked by the visible icon cap pushing extra icons into the overflow dot, and
+    there is no in app way to install or manage the companions.
+29. **Cutout and foldable awareness.** Overlay placement must read WindowInsets
+    (display cutout, status bar bounds) rather than a bare resource height, and must
+    re-place itself on fold, unfold and rotation.
+
 ## Suggested order of work
 1. Preset dropdown and named preset entry (A1, A2) — visible, requested, small.
 2. Pinned header (A3) and advanced collapse (A4).
