@@ -45,6 +45,12 @@ class DisplayService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
 
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        // Folding, unfolding and rotation all move the status bar and its cutouts.
+        controller.overlayEngine.refreshPlacement()
+    }
+
     override fun onDestroy() {
         controller.stop()
         scope.cancel()

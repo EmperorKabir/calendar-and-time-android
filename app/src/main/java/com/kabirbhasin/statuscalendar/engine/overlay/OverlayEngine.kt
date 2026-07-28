@@ -5,6 +5,7 @@ import android.graphics.PixelFormat
 import android.provider.Settings
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.WindowInsets
 import android.view.WindowManager
 import android.widget.TextView
 import com.kabirbhasin.statuscalendar.core.format.RenderedDisplay
@@ -31,6 +32,12 @@ class OverlayEngine(private val context: Context) : DisplayEngine {
             setTextColor(style.textColor.toInt())
             setTextSize(TypedValue.COMPLEX_UNIT_SP, style.textSizeSp)
             includeFontPadding = false
+            // Status bars vary from white to black between phones and wallpapers, so a
+            // contrasting shadow keeps the text readable without knowing the background.
+            setShadowLayer(3f, 0f, 1f, 0xC0000000.toInt())
+            typeface = android.graphics.Typeface.create(
+                android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD
+            )
         }
         runCatching {
             windowManager.addView(textView, layoutParams())
@@ -57,14 +64,38 @@ class OverlayEngine(private val context: Context) : DisplayEngine {
         val current = view ?: return
         current.setTextColor(newStyle.textColor.toInt())
         current.setTextSize(TypedValue.COMPLEX_UNIT_SP, newStyle.textSizeSp)
+        current.setShadowLayer(3f, 0f, 1f, 0xC0000000.toInt())
         runCatching { windowManager.updateViewLayout(current, layoutParams()) }
     }
 
-    /** Height of the status bar, so text sits inside it rather than above it. */
+    /**
+     * Status bar height taken from live window insets where available, so notches,
+     * punch holes and foldable posture changes are respected rather than assumed.
+     */
     private fun statusBarHeight(): Int {
+        val fromInsets = view?.rootWindowInsets
+            ?.getInsets(WindowInsets.Type.statusBars())
+            ?.top
+            ?: 0
+        if (fromInsets > 0) return fromInsets
         val resourceId = context.resources
             .getIdentifier("status_bar_height", "dimen", "android")
         return if (resourceId > 0) context.resources.getDimensionPixelSize(resourceId) else 0
+    }
+
+    /**
+     * Horizontal span the cutout occupies, so the text is never placed underneath a
+     * punch hole or notch. Returns 0 when the display has no cutout.
+     */
+    private fun cutoutRight(): Int {
+        val cutout = view?.rootWindowInsets?.displayCutout ?: return 0
+        return cutout.boundingRects.maxOfOrNull { it.right } ?: 0
+    }
+
+    /** Re-places the overlay after a fold, unfold or rotation. */
+    fun refreshPlacement() {
+        val current = view ?: return
+        runCatching { windowManager.updateViewLayout(current, layoutParams()) }
     }
 
     private fun layoutParams() = WindowManager.LayoutParams(
@@ -78,7 +109,8 @@ class OverlayEngine(private val context: Context) : DisplayEngine {
         PixelFormat.TRANSLUCENT
     ).apply {
         gravity = Gravity.TOP or Gravity.START
-        x = style.offsetX
+        // Keep clear of a notch or punch hole when the user has not nudged past it.
+        x = maxOf(style.offsetX, cutoutRight())
         // Centre the text within the status bar, then apply the user's nudge.
         val barHeight = statusBarHeight()
         val textHeight = (style.textSizeSp * context.resources.displayMetrics.scaledDensity).toInt()

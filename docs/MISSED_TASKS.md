@@ -27,13 +27,15 @@ user's request after repeated quality failures.
     policy, despite the stated goal of public distribution.
 
 ## B. Claimed or implied done without verification
-11. **Full UK preset.** Added to code; never applied and visually checked.
-12. **Superscript ordinals.** Unit tested only; never seen rendered on a device.
+11. ~~**Full UK preset.**~~ DONE 2026-07-28: rendered live in the status bar as
+    "Tuesday, 28th July 2026, 03:11".
+12. ~~**Superscript ordinals.**~~ DONE 2026-07-28: the raised "th" is visible in the
+    status bar overlay on the emulator.
 13. **Overlay calibration sliders.** Never exercised; overlay position never visually tuned.
 14. **Companion slots side by side.** Notifications from three packages proven, but the
     icons were never seen rendering together in the bar.
-15. **Text option and Both modes.** Never tested end to end, because the draw over apps
-    permission path was not completed on the emulator.
+15. ~~**Text and Both modes.**~~ DONE 2026-07-28: both switch correctly, add the overlay
+    window, and Compact removes it. Overlay text confirmed legible and correctly placed.
 16. **Every dropdown in Custom format.** Element order, joiner, day of week, month, year,
     date order, date separator, hours, AM/PM: none individually verified after the
     dropdown rework.
@@ -52,6 +54,13 @@ user's request after repeated quality failures.
     notification mode, and boot behaviour were only ever proven on the emulator or by
     manual settings writes, not through the app on the phone.
 
+## E. Fixed 2026-07-28
+30. Blank icon reserved a status bar slot when Compact was off. Fixed with a
+    minimum-importance channel so the slot is released; verified icons sit flush.
+31. Overlay text sat too high. Fixed by centring within the measured status bar height.
+32. Overlay text was invisible on light status bars. Fixed with a bold weight and a
+    contrast shadow; verified legible on the emulator's light bar.
+
 ## D. Process failures that caused rework
 23. Reported toggles as broken when my own adb taps were landing on empty space. Happened
     more than once; wasted the user's time and eroded trust in every other claim.
@@ -63,16 +72,14 @@ user's request after repeated quality failures.
     renders, until corrected.
 
 ## Added 2026-07-28 (user findings)
-27. **Overlay is unsuitable as the primary long-format path.** Punch hole cameras, notches,
-    curved edges and foldable hinges all move or occupy the status bar strip, and the
-    overlay cannot know about them reliably. The companion slot apps must become the
-    supported way to fit longer text, with the overlay demoted to a last resort.
+27. **Overlay demotion still pending.** Placement is now insets and cutout aware, but the
+    companion slots must still become the supported long-format path.
 28. **Companion slot work is unfinished.** Built and proven to post from separate packages,
     but blocked by the visible icon cap pushing extra icons into the overflow dot, and
     there is no in app way to install or manage the companions.
-29. **Cutout and foldable awareness.** Overlay placement must read WindowInsets
-    (display cutout, status bar bounds) rather than a bare resource height, and must
-    re-place itself on fold, unfold and rotation.
+29. ~~**Cutout and foldable awareness.**~~ DONE 2026-07-28: placement reads live
+    WindowInsets status bar height, avoids displayCutout bounding rects, and re-places on
+    configuration change (fold, unfold, rotate). Rotation verified on the emulator.
 
 ## Suggested order of work
 1. Preset dropdown and named preset entry (A1, A2) — visible, requested, small.
