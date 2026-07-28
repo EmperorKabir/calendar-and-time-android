@@ -461,6 +461,36 @@ private fun SettingsScreen(repository: SettingsRepository) {
             ) { v -> update { it.copy(stackMode = v) } }
 
             HorizontalDivider()
+            var advancedOpen by remember { mutableStateOf(false) }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("Advanced", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "System clock changes, extra icon slots and reliability settings.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                TextButton(onClick = { advancedOpen = !advancedOpen }) {
+                    Text(if (advancedOpen) "Hide" else "Show")
+                }
+            }
+            if (advancedOpen) {
+            val slotEngine = remember { SlotEngine(context) }
+            val installed = remember(current) { slotEngine.installedSlots().size }
+            ToggleRow(
+                "Extra icon slots",
+                if (installed > 0)
+                    "$installed companion app(s) installed, giving $installed extra icon(s) " +
+                        "inside the status bar. Your text is split across them."
+                else
+                    "Android gives each app one icon slot. Companion slot apps add more real " +
+                        "icons inside the status bar. None are installed yet.",
+                current.slotEngineEnabled
+            ) { scope.launch { repository.setSlotEngine(it) } }
             if (com.kabirbhasin.statuscalendar.BuildConfig.FLAVOR == "full") {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp)) {
@@ -481,6 +511,8 @@ private fun SettingsScreen(repository: SettingsRepository) {
             }
             SystemIntegrationCard()
             BatteryCard()
+            }
+            Spacer(Modifier.size(24.dp))
         }
     }
 }
@@ -651,7 +683,7 @@ private fun PreviewCard(settings: AppSettings) {
 
             val iconOn = settings.displayMode != DisplayMode.FULL_TEXT
             Text(
-                if (iconOn) "Compact icon" else "Compact icon (not selected)",
+                if (iconOn) "In the status bar" else "In the status bar (not selected)",
                 style = MaterialTheme.typography.labelLarge,
                 color = if (iconOn) MaterialTheme.colorScheme.onSurface
                 else MaterialTheme.colorScheme.onSurfaceVariant
@@ -699,7 +731,7 @@ private fun PreviewCard(settings: AppSettings) {
 
             val textOn = settings.displayMode != DisplayMode.COMPACT
             Text(
-                if (textOn) "Full text" else "Full text (not selected)",
+                if (textOn) "Over the status bar" else "Over the status bar (not selected)",
                 style = MaterialTheme.typography.labelLarge,
                 color = if (textOn) MaterialTheme.colorScheme.onSurface
                 else MaterialTheme.colorScheme.onSurfaceVariant

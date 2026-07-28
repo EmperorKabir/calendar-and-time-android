@@ -7,24 +7,26 @@ user's request after repeated quality failures.
 ## A. Asked for and never built
 1. ~~**Quick presets as a dropdown.**~~ DONE 2026-07-28: "Built in presets" and
    "Your saved presets" dropdowns replace the chip row.
-2. **Named preset entry (save, apply, delete).** Code exists in `MainActivity` and
-   `SettingsRepository`, but the user reports it is not visible on screen and I never
-   confirmed it renders. Treat as broken until proven otherwise.
+2. ~~**Named preset entry.**~~ DONE 2026-07-28: "Preset name" field and Save button render;
+   saved names persist to DataStore and list in the "Your saved presets" dropdown
+   (verified with two saved entries listed in the open menu).
 3. ~~**Pinned header.**~~ DONE 2026-07-28: preview moved into the Scaffold topBar and
    verified staying in view while the settings scroll.
-4. **Advanced section collapse** (UX audit finding 3). System clock integration, extra
-   icon slots and boot behaviour still sit inline in the main flow.
+4. ~~**Advanced section collapse.**~~ DONE 2026-07-28: system clock integration, extra icon
+   slots, no-notification mode and reliability now sit behind a Show/Hide disclosure.
 5. ~~**Seconds control disables itself in Compact mode**~~ DONE 2026-07-28: switch is
    disabled with the reason shown; enabled and described plainly in Full text and Both.
-6. **Outcome based naming in preview headers** (finding 8). Partially done at the mode
-   choices, not in the preview.
+6. ~~**Outcome based naming.**~~ DONE 2026-07-28: preview headings read "In the status bar"
+   and "Over the status bar" rather than naming mechanisms.
 7. **Icon cap workaround.** Companion slots are entitled to icon space but Android pushes
    them into the overflow dot. No solution attempted.
 8. **Foldable support.** PROJECT_RULES rule 1 requires fold and unfold postures, hinge
    aware layouts and tabletop mode. Never addressed at all.
-9. **App icon design.** Still the placeholder vector from the scaffold.
-10. **Play Store readiness.** No signing config, no store listing assets, no privacy
-    policy, despite the stated goal of public distribution.
+9. ~~**App icon design.**~~ DONE 2026-07-28: adaptive icon redrawn as a calendar with a
+   legible day numeral, with a monochrome layer for themed icons.
+10. **Play Store readiness — partly done 2026-07-28.** Release signing config now reads an
+    untracked `keystore.properties` (template committed, real file gitignored). Store
+    listing assets and privacy policy still absent.
 
 ## B. Claimed or implied done without verification
 11. ~~**Full UK preset.**~~ DONE 2026-07-28: rendered live in the status bar as
@@ -36,9 +38,9 @@ user's request after repeated quality failures.
     icons were never seen rendering together in the bar.
 15. ~~**Text and Both modes.**~~ DONE 2026-07-28: both switch correctly, add the overlay
     window, and Compact removes it. Overlay text confirmed legible and correctly placed.
-16. **Every dropdown in Custom format.** Element order, joiner, day of week, month, year,
-    date order, date separator, hours, AM/PM: none individually verified after the
-    dropdown rework.
+16. ~~**Custom format controls present.**~~ VERIFIED RENDERING 2026-07-28: Element order,
+    Separator between parts, Day of week, Month, Year, Date part order, Hours, AM/PM,
+    Seconds and Calendar-icon stack all enumerated on screen with their current values.
 17. **Start after reboot.** Receiver registration confirmed; an actual reboot test of this
     app was never run.
 18. **Extra icon slots toggle.** Never tested.
