@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.Image
@@ -156,8 +158,17 @@ private fun SettingsScreen(repository: SettingsRepository) {
             notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
-    LaunchedEffect(current.displayEnabled) {
+    // Start the service where permitted, and always render directly as well so the
+    // display never depends on a foreground service the OEM may refuse.
+    val fallbackScope = rememberCoroutineScope()
+    val fallbackController = remember {
+        com.kabirbhasin.statuscalendar.service.DisplayController(
+            context.applicationContext, fallbackScope
+        )
+    }
+    LaunchedEffect(current) {
         if (current.displayEnabled) DisplayService.start(context)
+        fallbackController.renderOnceFrom(current)
     }
     // Chunks posted by the chained mode outlive the service, so clear any
     // that remain whenever the mode is off.
@@ -171,7 +182,12 @@ private fun SettingsScreen(repository: SettingsRepository) {
         modifier = Modifier.fillMaxSize(),
         topBar = {
             // Pinned: the preview stays in view while the settings scroll beneath it.
-            Column(Modifier.padding(horizontal = 16.dp)) {
+            // statusBarsPadding keeps the content clear of the system bar and any cutout.
+            Column(
+                Modifier
+                    .statusBarsPadding()
+                    .padding(horizontal = 16.dp)
+            ) {
                 Text("Status Calendar", style = MaterialTheme.typography.headlineMedium)
                 Spacer(Modifier.size(10.dp))
                 PreviewCard(current)
@@ -182,6 +198,7 @@ private fun SettingsScreen(repository: SettingsRepository) {
         Column(
             modifier = Modifier
                 .padding(innerPadding)
+                .navigationBarsPadding()
                 .padding(horizontal = 16.dp)
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(10.dp)

@@ -50,6 +50,28 @@ class DisplayController(
         overlayEngine.stop()
     }
 
+    /**
+     * Renders one frame without any service. Used by the settings screen so the
+     * display appears immediately on devices that refuse foreground service starts.
+     */
+    fun renderOnceFrom(appSettings: AppSettings) {
+        settings = appSettings
+        if (!appSettings.displayEnabled) {
+            notificationEngine.stop()
+            overlayEngine.stop()
+            return
+        }
+        notificationEngine.start()
+        notificationEngine.setIconVisible(appSettings.notificationEngineEnabled)
+        if (appSettings.overlayEngineEnabled && overlayEngine.canDraw()) {
+            overlayEngine.start()
+            overlayEngine.applyStyle(appSettings.overlayStyle)
+        } else {
+            overlayEngine.stop()
+        }
+        renderNow()
+    }
+
     /** Foreground notification for the hosting service, from current settings. */
     fun foregroundNotification(): Notification =
         notificationEngine.build(currentDisplay(secondsCapable = false))
