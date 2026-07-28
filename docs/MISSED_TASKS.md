@@ -5,16 +5,17 @@ delivered partially, or claimed as done without proper verification. Written at 
 user's request after repeated quality failures.
 
 ## A. Asked for and never built
-1. **Quick presets as a dropdown.** Still rendered as a horizontally scrolling row of
-   chips. Asked for explicitly; not done.
+1. ~~**Quick presets as a dropdown.**~~ DONE 2026-07-28: "Built in presets" and
+   "Your saved presets" dropdowns replace the chip row.
 2. **Named preset entry (save, apply, delete).** Code exists in `MainActivity` and
    `SettingsRepository`, but the user reports it is not visible on screen and I never
    confirmed it renders. Treat as broken until proven otherwise.
-3. **Pinned header.** The grey preview card should stay fixed while the settings scroll.
-   I attempted this, broke the layout, reverted, and did not retry.
+3. ~~**Pinned header.**~~ DONE 2026-07-28: preview moved into the Scaffold topBar and
+   verified staying in view while the settings scroll.
 4. **Advanced section collapse** (UX audit finding 3). System clock integration, extra
    icon slots and boot behaviour still sit inline in the main flow.
-5. **Seconds control should disable itself in Compact mode** (finding 5). Not done.
+5. ~~**Seconds control disables itself in Compact mode**~~ DONE 2026-07-28: switch is
+   disabled with the reason shown; enabled and described plainly in Full text and Both.
 6. **Outcome based naming in preview headers** (finding 8). Partially done at the mode
    choices, not in the preview.
 7. **Icon cap workaround.** Companion slots are entitled to icon space but Android pushes

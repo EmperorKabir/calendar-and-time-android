@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.Image
@@ -166,7 +167,18 @@ private fun SettingsScreen(repository: SettingsRepository) {
         }
     }
 
-    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        topBar = {
+            // Pinned: the preview stays in view while the settings scroll beneath it.
+            Column(Modifier.padding(horizontal = 16.dp)) {
+                Text("Status Calendar", style = MaterialTheme.typography.headlineMedium)
+                Spacer(Modifier.size(10.dp))
+                PreviewCard(current)
+                Spacer(Modifier.size(10.dp))
+            }
+        }
+    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .padding(innerPadding)
@@ -174,9 +186,6 @@ private fun SettingsScreen(repository: SettingsRepository) {
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Text("Status Calendar", style = MaterialTheme.typography.headlineMedium)
-
-            PreviewCard(current)
 
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp)) {
@@ -426,11 +435,16 @@ private fun SettingsScreen(repository: SettingsRepository) {
                 hourLabel(spec.timeConfig.hourStyle),
                 HourStyle.entries.map { hourLabel(it) }
             ) { index -> update { it.copy(timeConfig = it.timeConfig.copy(hourStyle = HourStyle.entries[index])) } }
+            val secondsPossible = current.displayMode != DisplayMode.COMPACT
             ToggleRow(
                 "Seconds",
-                "Show live seconds. Only the text overlay can display these, because a " +
-                    "status bar icon cannot update once every second.",
-                spec.timeConfig.showSeconds
+                if (secondsPossible)
+                    "Show live seconds, updated every second."
+                else
+                    "Unavailable in Compact, because a status bar icon cannot update once " +
+                        "every second. Choose Full text or Both to use seconds.",
+                spec.timeConfig.showSeconds && secondsPossible,
+                enabled = secondsPossible
             ) { v -> update { it.copy(timeConfig = it.timeConfig.copy(showSeconds = v)) } }
             DropdownRow(
                 "AM/PM",
@@ -737,18 +751,23 @@ private fun ToggleRow(
     label: String,
     description: String,
     checked: Boolean,
+    enabled: Boolean = true,
     onChange: (Boolean) -> Unit
 ) {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            Text(label)
+            Text(
+                label,
+                color = if (enabled) MaterialTheme.colorScheme.onSurface
+                else MaterialTheme.colorScheme.onSurfaceVariant
+            )
             Text(
                 description,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        Switch(checked = checked, onCheckedChange = onChange)
+        Switch(checked = checked, onCheckedChange = onChange, enabled = enabled)
     }
 }
 
