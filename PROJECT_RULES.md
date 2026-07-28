@@ -45,4 +45,29 @@ The user may narrow or revoke this authority at any time.
 - Requirements + approved design baseline: `PROJECT_BRIEF.md` (read it every session).
 - Parent folder `tasker-fix` hosts an UNRELATED finished project; if its CLAUDE.md auto-loads
   (parent inheritance), ignore it for this project — a scope guard exists there too.
+
+## ANTI-DEFERRAL SAFEGUARD (added 2026-07-28 at the user's instruction; binding)
+The user has forbidden deferral in any form. These are hard rules, not guidance.
+
+1. **Never end a message with forward-looking work.** No "next actions", "next steps",
+   "next session", "immediate priorities", "what remains", "still outstanding",
+   "to finish", "picking up from", "priority for later", or any list of unfinished items.
+   These phrases are BANNED in user-facing output.
+2. **Never cite my own context, budget, token limits, or capacity as a reason to stop,
+   summarise, or hand off.** The user has explicitly withdrawn permission to reason about
+   this out loud or to let it shape the plan. Work until the work is done.
+3. **When an item finishes, immediately start the next outstanding item** from
+   `docs/MISSED_TASKS.md`. Do not report and wait. Do not ask which one unless two items
+   genuinely conflict.
+4. **A report describes only what was done and what was measured.** Blockers are stated as
+   a specific blocker plus the exact action that unblocks it, never as a to-do list.
+5. **`docs/MISSED_TASKS.md` is the single record.** Update it in place: strike through and
+   mark DONE with the date and the evidence. Never restate it back to the user as pending
+   work.
+6. **Verification is part of "done".** An item is only struck through once it has been
+   exercised on a device or emulator and the observed result recorded.
+7. **Self-check before sending any message:** does it contain a forward-looking list, a
+   mention of my limits, or an unfinished item presented as the user's decision? If yes,
+   delete that content and continue working instead.
+
 <!-- ANDROID-PROJECT-INIT:END -->
