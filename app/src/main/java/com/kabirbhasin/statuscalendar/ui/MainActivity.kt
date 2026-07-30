@@ -120,6 +120,14 @@ private fun orderLabel(order: List<DisplayElement>) =
     order.joinToString(" · ") { it.label() }
 
 private val joiners = listOf(", ", " ", " · ", " - ", " | ")
+private val dowLabels = DowStyle.entries.map { dowLabel(it) }
+private val monthLabels = MonthStyle.entries.map { monthLabel(it) }
+private val yearLabels = YearStyle.entries.map { yearLabel(it) }
+private val dateOrderLabels = DateOrder.entries.map { dateOrderLabel(it) }
+private val hourLabels = HourStyle.entries.map { hourLabel(it) }
+private val amPmLabels = AmPmStyle.entries.map { amPmLabel(it) }
+private val orderLabels = elementOrders.map { orderLabel(it) }
+private val joinerLabels = joiners.map { joinerLabel(it) }
 private val dateSeparators = listOf("/", "-", ".", " ")
 
 private fun joinerLabel(j: String) = when (j) {
@@ -370,18 +378,14 @@ private fun SettingsScreen(repository: SettingsRepository) {
                     }
                 ) { Text("Save") }
             }
-            current.savedPresets.forEach { saved ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(saved.name, modifier = Modifier.weight(1f))
-                    TextButton(onClick = {
-                        scope.launch { repository.setFormatSpec(saved.spec) }
-                    }) { Text("Apply") }
-                    TextButton(onClick = {
-                        scope.launch { repository.deletePreset(saved.name) }
-                    }) { Text("Delete") }
+            if (current.savedPresets.isNotEmpty()) {
+                DropdownRow(
+                    "Delete a saved preset",
+                    "Removes one of your saved formats.",
+                    "Choose",
+                    current.savedPresets.map { it.name }
+                ) { index ->
+                    scope.launch { repository.deletePreset(current.savedPresets[index].name) }
                 }
             }
 
@@ -392,21 +396,21 @@ private fun SettingsScreen(repository: SettingsRepository) {
                 "Element order",
                 "Choose which parts appear, and in what sequence.",
                 orderLabel(spec.order),
-                elementOrders.map { orderLabel(it) }
+                orderLabels
             ) { index -> update { it.copy(order = elementOrders[index]) } }
 
             DropdownRow(
                 "Separator between parts",
                 "The text placed between the day, date and time.",
                 joinerLabel(spec.separator),
-                joiners.map { joinerLabel(it) }
+                joinerLabels
             ) { index -> update { it.copy(separator = joiners[index]) } }
 
             DropdownRow(
                 "Day of week",
                 "Choose how the weekday name is written.",
                 dowLabel(spec.dowStyle),
-                DowStyle.entries.map { dowLabel(it) }
+                dowLabels
             ) { index -> update { it.copy(dowStyle = DowStyle.entries[index]) } }
 
             Text("Date", style = MaterialTheme.typography.labelLarge)
@@ -437,21 +441,21 @@ private fun SettingsScreen(repository: SettingsRepository) {
                 "Month",
                 "Choose how the month is written.",
                 monthLabel(spec.dateConfig.monthStyle),
-                MonthStyle.entries.map { monthLabel(it) }
+                monthLabels
             ) { index -> update { it.copy(dateConfig = it.dateConfig.copy(monthStyle = MonthStyle.entries[index])) } }
 
             DropdownRow(
                 "Year",
                 "Choose how the year is written.",
                 yearLabel(spec.dateConfig.yearStyle),
-                YearStyle.entries.map { yearLabel(it) }
+                yearLabels
             ) { index -> update { it.copy(dateConfig = it.dateConfig.copy(yearStyle = YearStyle.entries[index])) } }
 
             DropdownRow(
                 "Date part order",
                 "Choose the arrangement of day, month and year.",
                 dateOrderLabel(spec.dateConfig.order),
-                DateOrder.entries.map { dateOrderLabel(it) }
+                dateOrderLabels
             ) { index -> update { it.copy(dateConfig = it.dateConfig.copy(order = DateOrder.entries[index])) } }
 
             val numericMonth = spec.dateConfig.monthStyle == MonthStyle.NUMBER_PADDED ||
@@ -477,7 +481,7 @@ private fun SettingsScreen(repository: SettingsRepository) {
                 "Hours",
                 "Choose the clock style and whether hours carry a leading zero.",
                 hourLabel(spec.timeConfig.hourStyle),
-                HourStyle.entries.map { hourLabel(it) }
+                hourLabels
             ) { index -> update { it.copy(timeConfig = it.timeConfig.copy(hourStyle = HourStyle.entries[index])) } }
             val secondsPossible = current.displayMode != DisplayMode.COMPACT
             ToggleRow(
@@ -494,7 +498,7 @@ private fun SettingsScreen(repository: SettingsRepository) {
                 "AM/PM",
                 "The morning or afternoon marker used by 12 hour clocks.",
                 amPmLabel(spec.timeConfig.amPm),
-                AmPmStyle.entries.map { amPmLabel(it) }
+                amPmLabels
             ) { index -> update { it.copy(timeConfig = it.timeConfig.copy(amPm = AmPmStyle.entries[index])) } }
 
             ToggleRow(
@@ -701,11 +705,15 @@ private fun DropdownRow(
 
 @Composable
 private fun PreviewCard(settings: AppSettings) {
+    // Tick only while this card is on screen, and only as often as the format needs:
+    // a format without seconds changes once a minute, so a one second loop was
+    // recomposing the screen sixty times more than necessary.
+    val needsSeconds = settings.formatSpec.timeConfig.showSeconds
     var now by remember { mutableStateOf(ZonedDateTime.now()) }
-    LaunchedEffect(Unit) {
+    LaunchedEffect(needsSeconds) {
         while (true) {
             now = ZonedDateTime.now()
-            delay(1000)
+            delay(if (needsSeconds) 1000L else 20_000L)
         }
     }
     val rendered = FormatEngine.render(settings.formatSpec, now, Locale.getDefault())
@@ -920,18 +928,16 @@ private fun OverlayCalibration(
                     }
                 }) { Text("Save") }
             }
-            settings.savedOverlayPresets.forEach { saved ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(saved.name, modifier = Modifier.weight(1f))
-                    TextButton(onClick = {
-                        scope.launch { repository.setOverlayStyle(saved.style) }
-                    }) { Text("Apply") }
-                    TextButton(onClick = {
-                        scope.launch { repository.deleteOverlayPreset(saved.name) }
-                    }) { Text("Delete") }
+            if (settings.savedOverlayPresets.isNotEmpty()) {
+                DropdownRow(
+                    "Delete a saved position",
+                    "Removes one of your saved positions.",
+                    "Choose",
+                    settings.savedOverlayPresets.map { it.name }
+                ) { index ->
+                    scope.launch {
+                        repository.deleteOverlayPreset(settings.savedOverlayPresets[index].name)
+                    }
                 }
             }
             TextButton(onClick = { scope.launch { repository.resetOverlayStyle() } }) {
@@ -948,9 +954,19 @@ private fun SliderRow(
     range: ClosedFloatingPointRange<Float>,
     onChange: (Float) -> Unit
 ) {
+    // Writing to storage on every drag frame caused visible stalls, so the value is
+    // held locally while dragging and saved once when the finger lifts.
+    var dragging by remember { mutableStateOf(false) }
+    var local by remember(value) { mutableStateOf(value) }
+    val shown = if (dragging) local else value
     Column {
-        Text("$label: ${value.toInt()}", style = MaterialTheme.typography.bodySmall)
-        Slider(value = value, onValueChange = onChange, valueRange = range)
+        Text("$label: ${shown.toInt()}", style = MaterialTheme.typography.bodySmall)
+        Slider(
+            value = shown,
+            onValueChange = { dragging = true; local = it },
+            onValueChangeFinished = { dragging = false; onChange(local) },
+            valueRange = range
+        )
     }
 }
 

@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 
+@androidx.compose.runtime.Immutable
 data class OverlayStyle(
     val offsetX: Int,
     val offsetY: Int,
@@ -33,10 +34,13 @@ data class OverlayStyle(
 
 enum class DisplayMode { COMPACT, FULL_TEXT, BOTH }
 
+@androidx.compose.runtime.Immutable
 data class SavedPreset(val name: String, val spec: FormatSpec)
 
+@androidx.compose.runtime.Immutable
 data class SavedOverlayPreset(val name: String, val style: OverlayStyle)
 
+@androidx.compose.runtime.Immutable
 data class AppSettings(
     val displayEnabled: Boolean,
     val notificationEngineEnabled: Boolean,

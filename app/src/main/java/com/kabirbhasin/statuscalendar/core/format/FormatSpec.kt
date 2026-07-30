@@ -19,6 +19,7 @@ enum class HourStyle { H24_PADDED, H24, H12_PADDED, H12, NONE }
 
 enum class AmPmStyle { NONE, LOWERCASE, UPPERCASE }
 
+@androidx.compose.runtime.Immutable
 data class DateConfig(
     val showDay: Boolean,
     val dayPadded: Boolean,
@@ -30,12 +31,14 @@ data class DateConfig(
     val separator: String
 )
 
+@androidx.compose.runtime.Immutable
 data class TimeConfig(
     val hourStyle: HourStyle,
     val showSeconds: Boolean,
     val amPm: AmPmStyle
 )
 
+@androidx.compose.runtime.Immutable
 data class FormatSpec(
     val order: List<DisplayElement>,
     val dowStyle: DowStyle,
@@ -45,6 +48,7 @@ data class FormatSpec(
     val stackMode: Boolean
 )
 
+@androidx.compose.runtime.Immutable
 data class RenderedDisplay(
     val line: String,
     val stackTop: String?,

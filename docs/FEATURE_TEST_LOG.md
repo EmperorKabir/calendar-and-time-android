@@ -33,6 +33,32 @@ Every control exercised individually with its observable effect measured, not as
    ("Thursday" over "sday"), because an empty remainder fell back to a character split of
    the untruncated original. Now halved properly.
 
+## Performance investigation (freezes)
+Measured with `dumpsys gfxinfo` while scrolling, then calibrated against a reference app:
+
+| App | Janky frames | 50th percentile |
+|---|---|---|
+| Status Calendar | 72.2% | 53 ms |
+| Android Settings (system app, same emulator) | 73.4% | 61 ms |
+
+The emulator uses software rendering, so these figures are the environment rather than the
+app: the system's own settings screen is marginally worse than ours. No further optimisation
+was chased against these numbers. The changes below target the real causes of stalls on a
+physical device, each of which is a genuine defect regardless of what the emulator reports:
+
+- Sliders wrote to storage on every drag frame, forcing a file sync per frame. The value is
+  now held locally while dragging and written once when the finger lifts.
+- The preview refreshed once a second even for formats without seconds, recomposing the
+  screen sixty times more often than the content changed. It now refreshes every twenty
+  seconds unless seconds are actually being displayed.
+- Roughly fifty option strings in ten lists were rebuilt on every settings emission. They
+  are constant, so they are now built once.
+- The settings data classes were inferred unstable by the Compose compiler because of their
+  list fields, defeating skipping. They are now marked immutable.
+
 ## Added in this pass
 - Reset for the overlay position and size.
 - Named overlay position presets with save, apply and delete, mirroring the format presets.
+- Saved presets are chosen from dropdowns rather than listed as rows: "Your saved presets"
+  and "Delete a saved preset" for formats, "Apply a saved position" and "Delete a saved
+  position" for the overlay. Verified: all ten preset controls present, no leftover rows.
