@@ -691,11 +691,11 @@ private fun PreviewCard(settings: AppSettings) {
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("What each mode will show", style = MaterialTheme.typography.titleMedium)
+            Text("What you will actually see", style = MaterialTheme.typography.titleMedium)
 
             val iconOn = settings.displayMode != DisplayMode.FULL_TEXT
             Text(
-                if (iconOn) "In the status bar" else "In the status bar (not selected)",
+                if (iconOn) "Compact (status icon)" else "Compact (status icon) — not selected",
                 style = MaterialTheme.typography.labelLarge,
                 color = if (iconOn) MaterialTheme.colorScheme.onSurface
                 else MaterialTheme.colorScheme.onSurfaceVariant
@@ -709,13 +709,8 @@ private fun PreviewCard(settings: AppSettings) {
                     contentDescription = "Live representation of the compact icon",
                     modifier = Modifier.size(26.dp)
                 )
-                Image(
-                    bitmap = bitmap.asImageBitmap(),
-                    contentDescription = "Enlarged view of the same icon",
-                    modifier = Modifier.size(52.dp)
-                )
                 Text(
-                    "Live representation of the compact icon, shown at its real size and enlarged",
+                    "This is exactly what will appear next to your other status bar icons.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -723,9 +718,9 @@ private fun PreviewCard(settings: AppSettings) {
             val iconWarning = if (!iconOn) null else when {
                 iconDisplay.stackTop != null -> null
                 iconDisplay.stackTop != null ->
-                    "This format is too long for one icon, so the icon shows the weekday " +
-                        "above a large day number. Choose Full text if you want the whole " +
-                        "format written out."
+                    "There is only room for a few characters here, so the day of the week " +
+                        "is shown above a large date number. Pick the draw over option if " +
+                        "you want the whole thing written out."
                 iconDisplay.line.isEmpty() -> "Nothing selected to show."
                 else -> null
             }
@@ -738,7 +733,8 @@ private fun PreviewCard(settings: AppSettings) {
             }
             if (settings.formatSpec.timeConfig.showSeconds && iconOn) {
                 Text(
-                    "Seconds are left out here, because an icon cannot update every second.",
+                    "Seconds are not shown here. Android only lets an icon change once a " +
+                        "minute, so a ticking second hand is not possible.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -748,7 +744,7 @@ private fun PreviewCard(settings: AppSettings) {
 
             val textOn = settings.displayMode != DisplayMode.COMPACT
             Text(
-                if (textOn) "Over the status bar" else "Over the status bar (not selected)",
+                if (textOn) "Draw over effect over the status bar" else "Draw over effect over the status bar — not selected",
                 style = MaterialTheme.typography.labelLarge,
                 color = if (textOn) MaterialTheme.colorScheme.onSurface
                 else MaterialTheme.colorScheme.onSurfaceVariant
@@ -759,7 +755,8 @@ private fun PreviewCard(settings: AppSettings) {
             } else rendered.line.ifEmpty { "(nothing selected)" }
             Text(overlayText, style = MaterialTheme.typography.headlineSmall)
             Text(
-                "Shown in full, on one line, exactly as written above.",
+                "Your text is painted on top of the status bar, so it can be as long as you " +
+                    "like and can tick every second. It is hidden on the lock screen.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
