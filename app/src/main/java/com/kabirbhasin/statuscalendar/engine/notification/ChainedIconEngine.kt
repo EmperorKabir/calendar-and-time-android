@@ -32,9 +32,15 @@ class ChainedIconEngine(private val context: Context) : DisplayEngine {
     override fun start() {
         ensureChannel()
         active = true
+        cleared = false
     }
 
+    private var cleared = false
+
     override fun stop() {
+        // Six binder calls per settings emission for an engine that is off.
+        if (cleared) { active = false; return }
+        cleared = true
         active = false
         val manager = NotificationManagerCompat.from(context)
         // Clear the whole reserved range: chunks posted before a process restart

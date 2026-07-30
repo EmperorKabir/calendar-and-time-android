@@ -12,6 +12,16 @@
         android:icon="@android:drawable/ic_menu_my_calendar"
         android:label="@string/slot_label">
 
+        <activity
+            android:name=".SlotActivity"
+            android:exported="true"
+            android:label="@string/slot_label">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
         <receiver
             android:name=".SlotReceiver"
             android:exported="true"

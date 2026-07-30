@@ -26,7 +26,18 @@ class SlotEngine(private val context: Context) : DisplayEngine {
     private var active = false
     private var lastChunks: List<String> = emptyList()
 
-    fun installedSlots(): List<String> = SLOT_PACKAGES.filter { isInstalled(it) }
+    // Probing the package manager three times per tick cost three binder calls and
+    // three thrown exceptions a second. Installs are rare, so the answer is cached
+    // and only recomputed when the engine is started.
+    private var cachedSlots: List<String>? = null
+
+    fun installedSlots(): List<String> =
+        cachedSlots ?: SLOT_PACKAGES.filter { isInstalled(it) }.also { cachedSlots = it }
+
+    /** Call when packages may have changed, such as when the settings screen opens. */
+    fun refreshInstalled() {
+        cachedSlots = null
+    }
 
     private fun isInstalled(pkg: String): Boolean = runCatching {
         context.packageManager.getPackageInfo(pkg, 0)
@@ -35,6 +46,7 @@ class SlotEngine(private val context: Context) : DisplayEngine {
 
     override fun start() {
         active = true
+        refreshInstalled()
     }
 
     override fun stop() {

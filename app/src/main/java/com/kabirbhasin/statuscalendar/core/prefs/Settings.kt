@@ -1,7 +1,9 @@
 package com.kabirbhasin.statuscalendar.core.prefs
 
 import android.content.Context
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
@@ -18,6 +20,7 @@ import com.kabirbhasin.statuscalendar.core.format.MonthStyle
 import com.kabirbhasin.statuscalendar.core.format.Presets
 import com.kabirbhasin.statuscalendar.core.format.YearStyle
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 
 data class OverlayStyle(
@@ -45,7 +48,12 @@ data class AppSettings(
     val savedPresets: List<SavedPreset>
 )
 
-private val Context.dataStore by preferencesDataStore(name = "settings")
+private val Context.dataStore by preferencesDataStore(
+    name = "settings",
+    // A corrupted store throws from the flow itself, upstream of any map, so it
+    // cannot be caught downstream. Replacing it keeps the app usable.
+    corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() }
+)
 
 class SettingsRepository(private val context: Context) {
 
@@ -82,9 +90,11 @@ class SettingsRepository(private val context: Context) {
         val savedPresets = stringPreferencesKey("saved_presets")
     }
 
-    val flow: Flow<AppSettings> = context.dataStore.data.map { p ->
-        runCatching { readSettings(p) }.getOrElse { defaults() }
-    }
+    val flow: Flow<AppSettings> = context.dataStore.data
+        .map { p -> runCatching { readSettings(p) }.getOrElse { defaults() } }
+        // Read errors (IO, corruption reported late) must degrade to defaults
+        // rather than cancelling the collector and killing the display forever.
+        .catch { emit(defaults()) }
 
     private fun defaults(): AppSettings = AppSettings(
         displayEnabled = false,

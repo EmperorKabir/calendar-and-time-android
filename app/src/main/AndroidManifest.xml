@@ -8,6 +8,10 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Declared by both packages so the grant works whichever installs first. -->
+    <permission
+        android:name="com.kabirbhasin.statuscalendar.SLOT_CONTROL"
+        android:protectionLevel="signature" />
     <uses-permission android:name="com.kabirbhasin.statuscalendar.SLOT_CONTROL" />
 
     <queries>

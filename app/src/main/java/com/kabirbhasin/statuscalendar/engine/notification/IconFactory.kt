@@ -15,7 +15,8 @@ import com.kabirbhasin.statuscalendar.core.format.RenderedDisplay
  */
 class IconFactory {
 
-    private val size = 192
+    // The slot renders at 24dp; 96px covers xxhdpi with room to spare.
+    private val size = 96
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
@@ -26,8 +27,12 @@ class IconFactory {
     private var lastKey: String? = null
     private var lastBitmap: Bitmap? = null
 
+    private var blankBitmap: Bitmap? = null
+
     /** Fully transparent icon: the service keeps its notification, but no glyph shows. */
-    fun blank(): Bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    fun blank(): Bitmap = blankBitmap ?: Bitmap
+        .createBitmap(size, size, Bitmap.Config.ALPHA_8)
+        .also { blankBitmap = it }
 
     fun iconFor(display: RenderedDisplay): Bitmap {
         val key = if (display.stackTop != null) {
@@ -37,7 +42,7 @@ class IconFactory {
         }
         lastBitmap?.let { if (key == lastKey) return it }
 
-        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ALPHA_8)
         val canvas = Canvas(bitmap)
         val stackTop = display.stackTop
         val stackBottom = display.stackBottom

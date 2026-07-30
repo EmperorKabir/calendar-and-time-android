@@ -81,7 +81,10 @@ class NotificationEngine(private val context: Context) : DisplayEngine {
             .setSortKey("0")
             .setCategory(NotificationCompat.CATEGORY_STATUS)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
+            .setForegroundServiceBehavior(
+                if (iconVisible) NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE
+                else NotificationCompat.FOREGROUND_SERVICE_DEFERRED
+            )
             .build()
     }
 
