@@ -1,17 +1,24 @@
 # Video issue log — Record_2026-07-28-04-05-23
 
-Source: 81 frames at 1 fps, covering 04:05:23 to 04:06:44 on the CPH2841 (ColorOS).
-Every frame examined: status bar strip for all 81, plus full-screen contact sheets.
-No code was changed while compiling this log.
+Source: 1440x3168, 44.74 fps, 80.61 s (about 3,600 frames), CPH2841 (ColorOS).
+
+Method, second pass: the status bar strip (1440x120, full resolution) was extracted at
+10 fps giving 806 samples, and every sample measured programmatically for ink coverage,
+text block count, block span and ghosting. Full-screen contact sheets at 1 fps were used
+for the interface context. The first pass sampled only 81 frames at 1 fps and over-stated
+two findings; the measured corrections are marked below.
 
 ---
 
 ## CRITICAL
 
-### V1. Overlay windows accumulate and never get removed
-**Frames:** first doubling at 007; permanent doubling 032–067; three or more copies 068–081.
-**Observed:** two, then three, overlapping copies of the date text smeared over each other
-("Tuesday Tu28sd8aluly28..."), at slightly different x positions.
+### V1. Duplicate overlay renders (transient, not permanent — CORRECTED)
+**Measured over 806 samples:** 51 frames (6.3%) show a text span more than 1.35x the median
+617 px, i.e. two renders side by side. Bursts at 21.3 s, 21.8 s, 24.7 s, 26.5-26.7 s, and a
+continuous 4.4 s run from 26.9 s to 31.3 s where the span reaches 958-962 px (two copies).
+**Correction:** the first pass claimed permanent doubling from 32 s onward. That was wrong.
+From 32 s to the end the render is stable: x = 324, span 617-648 px, ghost ratio flat at
+0.58-0.61. The duplication is intermittent, concentrated in the 21-31 s window.
 **Cause:** each `DisplayController` creates its own `OverlayEngine`, and `start()` only guards
 `view != null` per instance. The settings screen created a second controller alongside the
 service's, and a new instance always adds another `TYPE_APPLICATION_OVERLAY` window.
@@ -24,20 +31,22 @@ several different times at once.
 **Cause:** same as V1 — only the newest engine instance holds a reference to its view.
 
 ### V3. Compact mode shows nothing in the status bar
-**Frames:** 004, 005 (Compact selected, status bar completely empty).
+**Measured:** 29 blank frames in two runs — 2.9 s to 5.1 s (2.2 s) and 18.0 s to 18.5 s.
+The longer run is Compact being selected: the overlay is removed and no icon replaces it.
 **Observed:** selecting Compact removes the overlay but no icon appears in its place, so the
 display vanishes entirely for the duration.
 
-### V4. Overlay disappears for several seconds during mode changes
-**Frames:** 004–006 blank bar.
-**Observed:** switching modes tears the overlay down without anything replacing it.
+### V4. Overlay disappears during mode changes
+**Measured:** the 18.0-18.5 s blank run coincides with a mode change; the bar carries nothing
+for half a second while the old window is torn down before the new one is added.
 
 ---
 
 ## HIGH
 
 ### V5. Overlay text runs off the right edge of the screen
-**Frames:** 022, 026, 028–031 — text begins near the right edge and is cut off.
+**Measured:** at 26.0 s the block starts at x = 763 with span 502 px, ending at 1265 px of a
+1440 px display; larger Horizontal values push it past the edge entirely.
 **Cause:** the window is `WRAP_CONTENT` with no width bound, so a large Horizontal offset
 pushes the text past the display edge instead of clamping or truncating.
 
@@ -67,9 +76,9 @@ preview does not tell the user what they will actually get.
 everything, including a full-screen weather app, with the frozen copies still visible.
 
 ### V10. Horizontal slider maximum exceeds usable width
-**Frames:** 007–012 (Horizontal 116 → 289 → 415 → 478).
-**Observed:** the slider allows offsets that push the text off-screen (see V5); its range is
-not derived from the display width.
+**Measured position timeline:** x = 300, 478, 380, 300, 763, 300, then settles at 324.
+The slider allows offsets that push text off-screen (see V5); its range is not derived from
+the display width.
 
 ---
 
