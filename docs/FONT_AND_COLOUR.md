@@ -46,11 +46,24 @@ The overlay previously assumed a light on dark bar: white text with a dark shado
 way to change it. That is the same wrong assumption that produced the black status bar icon
 — a status bar is white on many phones, black on others, and changes with the wallpaper.
 
-**What was done:** a Text colour control offering White, Black, Grey, Amber and Sky blue,
-stored per position preset so a saved position carries its colour. The contrast shadow is
-kept, so light text stays readable on a light bar and dark text on a dark one.
+**What was done:** a full colour control with three ways in, all editing the same stored
+value so they stay in step:
 
-**Verified:** selecting Black renders black text inside the bar on the emulator's light bar.
+- **Swatches** — ten circles covering white and black for the two common bar backgrounds
+  plus eight accents, with a ring marking the current selection.
+- **Hex field** — accepts `RGB`, `RRGGBB` and `AARRGGBB`, with or without a leading hash,
+  in any case, with surrounding spaces ignored. Half typed and malformed input is rejected
+  rather than guessed, and the field shows an error state instead of applying a wrong
+  colour. Eight unit tests cover this, because the field sees rubbish on every keystroke.
+- **Channel sliders** — red, green, blue and opacity, each 0 to 255, sharing the same
+  debounced slider used elsewhere so dragging does not write to storage per frame.
+
+A live preview square sits beside the hex field. The colour is stored per saved position,
+so a saved position carries its colour with it. The contrast shadow is kept regardless, so
+light text stays readable on a light bar and dark text on a dark one.
+
+**Verified on the emulator:** all ten swatches, the hex field, the preview and the sliders
+render; selecting Black produced black text inside the bar.
 
 ## Two defects found and fixed during this work
 

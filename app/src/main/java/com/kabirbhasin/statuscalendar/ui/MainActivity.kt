@@ -24,6 +24,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.material.icons.Icons
@@ -129,6 +138,32 @@ private fun orderLabel(order: List<DisplayElement>) =
     order.joinToString(" · ") { it.label() }
 
 private val joiners = listOf(", ", " ", " · ", " - ", " | ")
+
+// A spread that covers both a white and a black status bar, plus a few accents.
+private val swatches: List<Pair<String, Long>> = listOf(
+    "White" to 0xFFFFFFFF,
+    "Black" to 0xFF000000,
+    "Light grey" to 0xFFE0E0E0,
+    "Dark grey" to 0xFF424242,
+    "Red" to 0xFFE53935,
+    "Amber" to 0xFFFFC107,
+    "Green" to 0xFF43A047,
+    "Sky blue" to 0xFF4FC3F7,
+    "Indigo" to 0xFF3F51B5,
+    "Violet" to 0xFF9C27B0
+)
+
+/** Accepts RGB, RRGGBB and AARRGGBB, with or without a leading hash. */
+internal fun parseHexColour(input: String): Long? {
+    val cleaned = input.trim().removePrefix("#")
+    val expanded = when (cleaned.length) {
+        3 -> "FF" + cleaned.map { "$it$it" }.joinToString("")
+        6 -> "FF$cleaned"
+        8 -> cleaned
+        else -> return null
+    }
+    return expanded.toLongOrNull(16)
+}
 
 // The status bar is white on some phones and black on others, and changes with the
 // wallpaper, so the colour cannot be assumed.
@@ -1000,16 +1035,13 @@ private fun OverlayCalibration(
             SliderRow("Text size", style.textSizeSp, 8f..24f) {
                 scope.launch { repository.setOverlayStyle(style.copy(textSizeSp = it)) }
             }
-            DropdownRow(
-                "Text colour",
-                "Match this to your status bar. A light bar needs dark text.",
-                overlayColourLabel(style.textColor),
-                overlayColours.map { it.first }
-            ) { index ->
-                scope.launch {
-                    repository.setOverlayStyle(style.copy(textColor = overlayColours[index].second))
+            ColourPicker(
+                value = style.textColor,
+                onPick = { picked ->
+                    scope.launch { repository.setOverlayStyle(style.copy(textColor = picked)) }
                 }
-            }
+            )
+
             ToggleRow(
                 "Hide in fullscreen",
                 "Disappear while a video or game hides the status bar, so the text never " +
@@ -1077,6 +1109,98 @@ private fun OverlayCalibration(
             }
         }
     }
+}
+
+/**
+ * Colour control for the overlay text: ready made swatches for speed, a hex field for
+ * an exact value, and channel sliders for adjusting by eye. All three edit the same
+ * stored value, so whichever the user reaches for, the others follow.
+ */
+@Composable
+private fun ColourPicker(value: Long, onPick: (Long) -> Unit) {
+    val alpha = ((value shr 24) and 0xFF).toInt()
+    val red = ((value shr 16) and 0xFF).toInt()
+    val green = ((value shr 8) and 0xFF).toInt()
+    val blue = (value and 0xFF).toInt()
+
+    fun compose(a: Int, r: Int, g: Int, b: Int): Long =
+        ((a.toLong() and 0xFF) shl 24) or ((r.toLong() and 0xFF) shl 16) or
+            ((g.toLong() and 0xFF) shl 8) or (b.toLong() and 0xFF)
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Text colour", style = MaterialTheme.typography.labelLarge)
+        Text(
+            "Match this to your status bar. A light bar needs dark text.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            swatches.forEach { (name, colour) ->
+                val selected = colour == value
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(Color(colour))
+                        .border(
+                            width = if (selected) 3.dp else 1.dp,
+                            color = if (selected) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.outline,
+                            shape = CircleShape
+                        )
+                        .clickable { onPick(colour) }
+                        .semantics { contentDescription = name }
+                )
+            }
+        }
+
+        var hexText by remember(value) {
+            mutableStateOf("#%08X".format(value).uppercase())
+        }
+        var hexError by remember { mutableStateOf(false) }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedTextField(
+                value = hexText,
+                onValueChange = { entered ->
+                    hexText = entered
+                    val parsed = parseHexColour(entered)
+                    hexError = parsed == null
+                    if (parsed != null) onPick(parsed)
+                },
+                singleLine = true,
+                isError = hexError,
+                label = { Text(if (hexError) "Hex code, for example #FFFFFF" else "Hex code") },
+                modifier = Modifier.weight(1f)
+            )
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(value))
+                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
+                    .semantics { contentDescription = "Current colour" }
+            )
+        }
+
+        ChannelSlider("Red", red) { onPick(compose(alpha, it, green, blue)) }
+        ChannelSlider("Green", green) { onPick(compose(alpha, red, it, blue)) }
+        ChannelSlider("Blue", blue) { onPick(compose(alpha, red, green, it)) }
+        ChannelSlider("Opacity", alpha) { onPick(compose(it, red, green, blue)) }
+    }
+}
+
+@Composable
+private fun ChannelSlider(label: String, value: Int, onChange: (Int) -> Unit) {
+    SliderRow(label, value.toFloat(), 0f..255f) { onChange(it.toInt()) }
 }
 
 @Composable
