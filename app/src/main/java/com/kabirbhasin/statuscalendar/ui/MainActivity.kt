@@ -34,7 +34,6 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.graphics.asImageBitmap
-import com.kabirbhasin.statuscalendar.engine.notification.ChainedIconEngine
 import com.kabirbhasin.statuscalendar.engine.notification.IconFactory
 import com.kabirbhasin.statuscalendar.engine.slots.SlotEngine
 import androidx.compose.foundation.horizontalScroll
@@ -185,12 +184,11 @@ private fun SettingsScreen(repository: SettingsRepository) {
         if (current.displayEnabled) DisplayService.start(context)
         fallbackController.renderOnceFrom(current)
     }
-    // Chunks posted by the chained mode outlive the service, so clear any
-    // that remain whenever the mode is off.
-    LaunchedEffect(current.chainedEngineEnabled, current.displayEnabled) {
-        if (!current.chainedEngineEnabled || !current.displayEnabled) {
-            ChainedIconEngine(context).stop()
-        }
+    // A withdrawn experiment could leave notifications behind on an upgraded install.
+    // Clear its reserved range once per launch so nothing lingers in the shade.
+    LaunchedEffect(Unit) {
+        val manager = androidx.core.app.NotificationManagerCompat.from(context)
+        (2000..2005).forEach { id -> runCatching { manager.cancel(id) } }
     }
 
     // On a tablet or an unfolded foldable the content is centred and width limited,
@@ -588,13 +586,29 @@ private fun SystemIntegrationCard() {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("System clock integration", style = MaterialTheme.typography.titleMedium)
+            val sideloadOnly = com.kabirbhasin.statuscalendar.BuildConfig.FLAVOR != "full"
             Text(
-                "The deepest option. Instead of adding to the status bar, this changes the " +
-                    "phone's own clock. It needs a permission that you grant once from a " +
-                    "computer, using this command:",
+                if (sideloadOnly)
+                    "The deepest option: instead of adding to the status bar, it changes the " +
+                        "phone's own clock to show seconds, hide itself, or switch between 12 " +
+                        "and 24 hour. Google Play does not allow the permission this needs, so " +
+                        "it is only available in the version downloaded from the project page."
+                else
+                    "The deepest option. Instead of adding to the status bar, this changes the " +
+                        "phone's own clock. It needs a permission that you grant once from a " +
+                        "computer, using this command:",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            if (sideloadOnly) {
+                val oem = remember { com.kabirbhasin.statuscalendar.core.oem.OemProfile.detect() }
+                Text("Your device: ${oem.label}", style = MaterialTheme.typography.labelLarge)
+                oem.backgroundSteps.forEach {
+                    Text("• $it", style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                return@Column
+            }
             Text(
                 tweaks.grantCommand(),
                 style = MaterialTheme.typography.bodySmall
@@ -1039,7 +1053,9 @@ private fun SliderRow(
     // Writing to storage on every drag frame caused visible stalls, so the value is
     // held locally while dragging and saved once when the finger lifts.
     var dragging by remember { mutableStateOf(false) }
-    var local by remember(value) { mutableStateOf(value) }
+    var local by remember { mutableStateOf(value) }
+    // Adopt external changes such as Reset, but never while the finger is down.
+    if (!dragging && local != value) local = value
     val shown = if (dragging) local else value
     Column {
         Text("$label: ${shown.toInt()}", style = MaterialTheme.typography.bodySmall)

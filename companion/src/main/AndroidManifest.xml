@@ -3,9 +3,9 @@
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <permission
-        android:name="com.kabirbhasin.statuscalendar.SLOT_CONTROL"
-        android:protectionLevel="signature" />
+    <!-- Defined by the main app only. Declaring it here as well made the second
+         install fail with INSTALL_FAILED_DUPLICATE_PERMISSION. -->
+    <uses-permission android:name="com.kabirbhasin.statuscalendar.SLOT_CONTROL" />
 
     <application
         android:allowBackup="false"

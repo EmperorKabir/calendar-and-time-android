@@ -51,8 +51,6 @@ class DisplayController private constructor(
     val notificationEngine = NotificationEngine(context)
     val overlayEngine = com.kabirbhasin.statuscalendar.engine.overlay.OverlayEngine(context)
     val slotEngine = com.kabirbhasin.statuscalendar.engine.slots.SlotEngine(context)
-    val chainedEngine =
-        com.kabirbhasin.statuscalendar.engine.notification.ChainedIconEngine(context)
     private val repository = SettingsRepository(context)
     private val tickSource = TickSource(context, onRender = ::renderNow)
 
@@ -77,7 +75,6 @@ class DisplayController private constructor(
     fun stop() {
         tickSource.stop()
         notificationEngine.stop()
-        chainedEngine.stop()
         slotEngine.stop()
         overlayEngine.stop()
     }
@@ -107,8 +104,17 @@ class DisplayController private constructor(
         renderNow()
     }
 
-    /** Foreground notification for the hosting service, from current settings. */
-    fun foregroundNotification(): Notification =
+    /**
+     * Foreground notification for the hosting service. Until settings arrive there is
+     * nothing truthful to draw, so the icon starts blank rather than showing a default
+     * format that the user may not have chosen.
+     */
+    fun foregroundNotification(): Notification {
+        if (settings == null) notificationEngine.setIconVisible(false)
+        return buildForeground()
+    }
+
+    private fun buildForeground(): Notification =
         notificationEngine.build(
             com.kabirbhasin.statuscalendar.core.format.IconDisplay.forSpec(
                 settings?.formatSpec ?: Presets.compactDate.spec,
@@ -121,8 +127,7 @@ class DisplayController private constructor(
         if (!newSettings.displayEnabled) {
             // Clear every engine's output before the host stops, otherwise
             // chained chunks posted earlier stay in the shade.
-            chainedEngine.stop()
-            slotEngine.stop()
+                slotEngine.stop()
             overlayEngine.stop()
             onStopRequested?.invoke()
             return
@@ -134,7 +139,6 @@ class DisplayController private constructor(
         notificationEngine.start()
         notificationEngine.setIconVisible(newSettings.notificationEngineEnabled)
         renderNow()
-        if (newSettings.chainedEngineEnabled) chainedEngine.start() else chainedEngine.stop()
         if (newSettings.slotEngineEnabled) slotEngine.start() else slotEngine.stop()
         if (newSettings.overlayEngineEnabled && overlayEngine.canDraw()) {
             overlayEngine.start()
@@ -160,9 +164,6 @@ class DisplayController private constructor(
         )
         if (current.slotEngineEnabled) {
             slotEngine.render(currentDisplay(secondsCapable = false))
-        }
-        if (current.chainedEngineEnabled) {
-            chainedEngine.render(currentDisplay(secondsCapable = false))
         }
         if (current.overlayEngineEnabled) {
             overlayEngine.render(currentDisplay(secondsCapable = true))

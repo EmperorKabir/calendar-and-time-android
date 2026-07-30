@@ -135,7 +135,9 @@ Cycling Compact -> Full text -> Both -> Compact -> Full text with state checked 
   clock and the screen edge, its width is bounded by the space remaining, and the Horizontal
   slider range is derived from the display width instead of a fixed 1400.
 - **V7 fixed:** icon-specific guidance and the seconds caveat only appear when Compact is in use.
-- **V8 fixed:** the preview shows the icon at true size and enlarged beside it.
+- **V8 fixed:** the preview shows the icon at its true size. CORRECTION: this line
+  previously said "and enlarged beside it"; the enlarged copy was removed afterwards at the
+  owner's request, and the claim was never updated.
 
 ---
 

@@ -40,8 +40,15 @@ class IconDisplayTest {
         assertEquals("21:05", r.line)
     }
 
-    @Test fun boundaryAtSevenCharactersStaysSingleLine() {
-        val r = IconDisplay.forSpec(Presets.time12.spec, now, locale)
-        assertEquals(true, r.line.length <= IconDisplay.MAX_SINGLE_LINE || r.stackTop != null)
+    @Test fun shortFormatsStayOnOneLine() {
+        val r = IconDisplay.forSpec(Presets.time24.spec, now, locale)
+        assertEquals(true, r.line.length <= IconDisplay.MAX_SINGLE_LINE)
+        assertNull(r.stackTop)
+    }
+
+    @Test fun longFormatsFallBackToCalendar() {
+        val rendered = FormatEngine.render(Presets.compactDate.spec, now, locale).line
+        assertEquals(true, rendered.length > IconDisplay.MAX_SINGLE_LINE)
+        assertNotNull(IconDisplay.forSpec(Presets.compactDate.spec, now, locale).stackTop)
     }
 }

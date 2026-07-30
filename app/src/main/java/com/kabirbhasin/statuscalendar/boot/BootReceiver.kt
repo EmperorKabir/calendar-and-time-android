@@ -21,6 +21,8 @@ class BootReceiver : BroadcastReceiver() {
                 if (settings.displayEnabled && settings.startOnBoot) {
                     DisplayService.start(context.applicationContext)
                 }
+            } catch (t: Throwable) {
+                // A failure here must never crash the device's boot sequence.
             } finally {
                 pending.finish()
             }

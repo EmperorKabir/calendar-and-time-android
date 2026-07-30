@@ -45,7 +45,6 @@ data class AppSettings(
     val displayEnabled: Boolean,
     val notificationEngineEnabled: Boolean,
     val overlayEngineEnabled: Boolean,
-    val chainedEngineEnabled: Boolean,
     val slotEngineEnabled: Boolean,
     val displayMode: DisplayMode,
     val startOnBoot: Boolean,
@@ -68,7 +67,6 @@ class SettingsRepository(private val context: Context) {
         val displayEnabled = booleanPreferencesKey("display_enabled")
         val notifEngine = booleanPreferencesKey("engine_notification")
         val overlayEngine = booleanPreferencesKey("engine_overlay")
-        val chainedEngine = booleanPreferencesKey("engine_chained")
         val slotEngine = booleanPreferencesKey("engine_slots")
         val displayMode = stringPreferencesKey("display_mode")
         val startOnBoot = booleanPreferencesKey("start_on_boot")
@@ -108,7 +106,6 @@ class SettingsRepository(private val context: Context) {
         displayEnabled = false,
         notificationEngineEnabled = true,
         overlayEngineEnabled = false,
-        chainedEngineEnabled = false,
         slotEngineEnabled = true,
         displayMode = DisplayMode.COMPACT,
         startOnBoot = true,
@@ -124,7 +121,6 @@ class SettingsRepository(private val context: Context) {
             displayEnabled = p.safe(Keys.displayEnabled) ?: false,
             notificationEngineEnabled = enumPref(p.safe(Keys.displayMode), DisplayMode.COMPACT) != DisplayMode.FULL_TEXT,
             overlayEngineEnabled = enumPref(p.safe(Keys.displayMode), DisplayMode.COMPACT) != DisplayMode.COMPACT,
-            chainedEngineEnabled = false,
             slotEngineEnabled = p.safe(Keys.slotEngine) ?: true,
             displayMode = enumPref(p.safe(Keys.displayMode), DisplayMode.COMPACT),
             startOnBoot = p.safe(Keys.startOnBoot) ?: true,
@@ -296,9 +292,6 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setOverlayEngine(value: Boolean) =
         context.dataStore.edit { it[Keys.overlayEngine] = value }
-
-    suspend fun setChainedEngine(value: Boolean) =
-        context.dataStore.edit { it[Keys.chainedEngine] = value }
 
     suspend fun setDisplayMode(mode: DisplayMode) =
         context.dataStore.edit { it[Keys.displayMode] = mode.name }

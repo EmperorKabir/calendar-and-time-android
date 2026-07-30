@@ -24,6 +24,7 @@ class OverlayEngine(private val context: Context) : DisplayEngine {
     private val windowManager =
         context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     private var view: TextView? = null
+    private var placedFromInsets = false
     private var style = OverlayStyle(0, 0, 13f, 0xFFFFFFFF, true)
 
     fun canDraw(): Boolean = Settings.canDrawOverlays(context)
@@ -48,9 +49,13 @@ class OverlayEngine(private val context: Context) : DisplayEngine {
         // When a video or game goes fullscreen the status bar is hidden; the overlay
         // must follow it rather than floating over the content.
         textView.setOnApplyWindowInsetsListener { v, insets ->
-            // Insets are unavailable until the window is attached, so the first
-            // placement cannot know the cutout. Re-place as soon as they arrive.
-            refreshPlacement()
+            // Insets arrive after attachment, so the first placement cannot know the
+            // cutout. Re-place exactly once: calling updateViewLayout from inside this
+            // callback on every pass is a self sustaining layout loop.
+            if (!placedFromInsets) {
+                placedFromInsets = true
+                v.post { refreshPlacement() }
+            }
             if (style.hideInFullscreen) {
                 val barVisible = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     insets.isVisible(WindowInsets.Type.statusBars())
@@ -59,6 +64,10 @@ class OverlayEngine(private val context: Context) : DisplayEngine {
                     insets.systemWindowInsetTop > 0
                 }
                 v.visibility = if (barVisible) View.VISIBLE else View.GONE
+            } else {
+                // Without this the view stays GONE forever if the setting is turned
+                // off while it happens to be hidden.
+                v.visibility = View.VISIBLE
             }
             insets
         }
@@ -69,6 +78,7 @@ class OverlayEngine(private val context: Context) : DisplayEngine {
     }
 
     override fun stop() {
+        placedFromInsets = false
         val current = view ?: return
         // Only forget the view if removal succeeded, otherwise the window is
         // orphaned on screen with no reference left to remove it later.

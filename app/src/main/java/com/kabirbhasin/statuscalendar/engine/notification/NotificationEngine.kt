@@ -1,5 +1,6 @@
 package com.kabirbhasin.statuscalendar.engine.notification
 
+import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -7,7 +8,9 @@ import android.app.PendingIntent
 import android.content.Context
 import android.os.Build
 import android.content.Intent
+import android.content.pm.PackageManager
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.graphics.drawable.IconCompat
 import com.kabirbhasin.statuscalendar.core.format.RenderedDisplay
@@ -21,8 +24,12 @@ class NotificationEngine(private val context: Context) : DisplayEngine {
         const val SILENT_CHANNEL_ID = "status_service"
         const val NOTIFICATION_ID = 1001
 
-        /** The chip is a small surface; longer strings are dropped by the system. */
-        const val SHORT_TEXT_LIMIT = 24
+        /**
+         * The platform documents a maximum of 7 characters for the chip's short text,
+         * and drops the text entirely when less than half of it fits. Anything longer
+         * than this produces an icon-only chip, which is worse than not promoting.
+         */
+        const val SHORT_TEXT_LIMIT = 7
     }
 
     private val iconFactory = IconFactory()
@@ -31,7 +38,11 @@ class NotificationEngine(private val context: Context) : DisplayEngine {
      * True when the platform renders promoted ongoing notifications as a status bar
      * chip. The chip carries text, unlike an icon, so long formats stay readable.
      */
-    fun chipSupported(): Boolean = Build.VERSION.SDK_INT >= 36
+    fun chipSupported(): Boolean =
+        Build.VERSION.SDK_INT >= 36 &&
+            runCatching {
+                NotificationManagerCompat.from(context).canPostPromotedNotifications()
+            }.getOrDefault(false)
     private var lastRendered: RenderedDisplay? = null
     private var active = false
     private var iconVisible = true
@@ -98,9 +109,12 @@ class NotificationEngine(private val context: Context) : DisplayEngine {
                 // Android 16 promotes an ongoing notification to a status bar chip and
                 // renders the short critical text inside it. That is the platform's own
                 // way of putting our text in the bar, so it needs no overlay at all.
-                if (chipSupported() && iconVisible) {
+                // Promoting with text that will not fit yields an icon-only chip, so
+                // promotion is requested only when the format is genuinely short.
+                val chipText = display.stackBottom ?: contentText
+                if (chipSupported() && iconVisible && chipText.length <= SHORT_TEXT_LIMIT) {
                     setRequestPromotedOngoing(true)
-                    setShortCriticalText(contentText.take(SHORT_TEXT_LIMIT))
+                    setShortCriticalText(chipText)
                 }
             }
             .build()
@@ -108,15 +122,15 @@ class NotificationEngine(private val context: Context) : DisplayEngine {
 
     private fun post(display: RenderedDisplay) {
         val manager = NotificationManagerCompat.from(context)
-        if (!canPost() || !manager.areNotificationsEnabled()) return
+        if (!manager.areNotificationsEnabled()) return
+        // Checked inline rather than through a helper so the permission guard is
+        // statically verifiable at the call site.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) return
         runCatching { manager.notify(NOTIFICATION_ID, build(display)) }
     }
-
-    /** Android 13+ gates posting behind a runtime permission. */
-    private fun canPost(): Boolean =
-        Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-            context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) ==
-            android.content.pm.PackageManager.PERMISSION_GRANTED
 
     private fun ensureChannel() {
         val manager = context.getSystemService(NotificationManager::class.java)

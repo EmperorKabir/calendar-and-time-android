@@ -64,8 +64,12 @@ class SystemTweaks(private val context: Context) {
             .filter { it.isNotEmpty() }
             .toSet()
 
-    private fun write(block: () -> Unit): Boolean {
+    /**
+     * Settings.*.put* returns false when the write is rejected. Discarding that made a
+     * refused write look successful, so the switch stayed on while nothing had changed.
+     */
+    private fun write(block: () -> Boolean): Boolean {
         if (!granted()) return false
-        return runCatching { block() }.isSuccess
+        return runCatching { block() }.getOrDefault(false)
     }
 }

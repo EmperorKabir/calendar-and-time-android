@@ -20,14 +20,15 @@ user's request after repeated quality failures.
    and "Over the status bar" rather than naming mechanisms.
 7. **Icon cap workaround.** Companion slots are entitled to icon space but Android pushes
    them into the overflow dot. No solution attempted.
-8. ~~**Foldable and large screen support.**~~ DONE 2026-07-28: content width capped at 720dp
-   and centred at 600dp and above; the activity handles configuration changes itself instead
+8. **Foldable and large screen support — PARTIAL, not done.** Content width is capped at
+   720dp at 600dp and above (left aligned, not centred as previously claimed); the activity handles configuration changes itself instead
    of being recreated. Rotation verified on the emulator with no crash and no window churn.
    Hinge aware two pane layout is not implemented; the screen is a single scrolling column by
    design, so a hinge split would add no information.
 9. ~~**App icon design.**~~ DONE 2026-07-28: adaptive icon redrawn as a calendar with a
    legible day numeral, with a monochrome layer for themed icons.
-10. ~~**Play Store readiness.**~~ DONE 2026-07-28: release signing reads an untracked
+10. **Play Store readiness — PARTIAL.** `lintPlayRelease` still reports 2 errors, so this
+    was wrongly marked done. release signing reads an untracked
     `keystore.properties`; privacy policy, listing copy, data safety declaration and the
     specialUse justification are written in `docs/store/`. Screenshots and the feature
     graphic still need to be captured from a real device before submission.

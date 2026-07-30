@@ -92,10 +92,18 @@ class SlotEngine(private val context: Context) : DisplayEngine {
         if (display.stackTop != null) {
             return List(slots) { if (it == 0) "${display.stackTop} ${display.stackBottom}" else "" }
         }
-        val pieces = display.line
+        // Punctuation first, then whitespace: the default preset joins with a space,
+        // so ignoring it left one crammed slot and the rest blank.
+        var pieces = display.line
             .split(",", "·", "|", " - ")
             .map { it.trim() }
             .filter { it.isNotEmpty() }
+        if (pieces.size < slots) {
+            pieces = pieces.flatMap { piece ->
+                if (pieces.size == 1) piece.split(" ").filter { it.isNotEmpty() }
+                else listOf(piece)
+            }
+        }
         if (pieces.isEmpty()) return List(slots) { "" }
         return List(slots) { index -> pieces.getOrElse(index) { "" } }
     }
