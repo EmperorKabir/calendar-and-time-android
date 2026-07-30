@@ -2,6 +2,7 @@ package com.kabirbhasin.statuscalendar.engine.overlay
 
 import android.content.Context
 import android.graphics.PixelFormat
+import android.os.Build
 import android.provider.Settings
 import android.util.TypedValue
 import android.view.Gravity
@@ -27,6 +28,8 @@ class OverlayEngine(private val context: Context) : DisplayEngine {
     fun canDraw(): Boolean = Settings.canDrawOverlays(context)
 
     override fun start() {
+        // A view already attached means this engine is showing; re-adding would
+        // stack a second window that never updates.
         if (view != null || !canDraw()) return
         val textView = TextView(context).apply {
             setTextColor(style.textColor.toInt())
@@ -38,6 +41,8 @@ class OverlayEngine(private val context: Context) : DisplayEngine {
             typeface = android.graphics.Typeface.create(
                 android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD
             )
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
         }
         runCatching {
             windowManager.addView(textView, layoutParams())
@@ -73,10 +78,12 @@ class OverlayEngine(private val context: Context) : DisplayEngine {
      * punch holes and foldable posture changes are respected rather than assumed.
      */
     private fun statusBarHeight(): Int {
-        val fromInsets = view?.rootWindowInsets
-            ?.getInsets(WindowInsets.Type.statusBars())
-            ?.top
-            ?: 0
+        val fromInsets = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            view?.rootWindowInsets?.getInsets(WindowInsets.Type.statusBars())?.top ?: 0
+        } else {
+            @Suppress("DEPRECATION")
+            view?.rootWindowInsets?.systemWindowInsetTop ?: 0
+        }
         if (fromInsets > 0) return fromInsets
         val resourceId = context.resources
             .getIdentifier("status_bar_height", "dimen", "android")
@@ -88,6 +95,7 @@ class OverlayEngine(private val context: Context) : DisplayEngine {
      * punch hole or notch. Returns 0 when the display has no cutout.
      */
     private fun cutoutRight(): Int {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return 0
         val cutout = view?.rootWindowInsets?.displayCutout ?: return 0
         return cutout.boundingRects.maxOfOrNull { it.right } ?: 0
     }
@@ -98,8 +106,14 @@ class OverlayEngine(private val context: Context) : DisplayEngine {
         runCatching { windowManager.updateViewLayout(current, layoutParams()) }
     }
 
+    /** Space left between the text's start edge and the right of the screen. */
+    private fun availableWidth(): Int {
+        val screen = context.resources.displayMetrics.widthPixels
+        return (screen - maxOf(style.offsetX, cutoutRight())).coerceAtLeast(1)
+    }
+
     private fun layoutParams() = WindowManager.LayoutParams(
-        WindowManager.LayoutParams.WRAP_CONTENT,
+        availableWidth(),
         WindowManager.LayoutParams.WRAP_CONTENT,
         WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
         WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or

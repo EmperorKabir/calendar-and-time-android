@@ -20,7 +20,7 @@ class KeepAliveAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
-        controller = DisplayController(this, scope).also {
+        controller = DisplayController.get(this, scope).also {
             it.onStopRequested = { controller?.stop() }
             it.start()
         }

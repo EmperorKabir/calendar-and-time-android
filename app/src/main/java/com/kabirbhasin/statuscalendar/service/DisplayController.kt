@@ -19,10 +19,26 @@ import java.util.Locale
  * the play flavour, accessibility keep-alive in the full flavour): watches
  * settings, listens to ticks, renders through whichever engines are enabled.
  */
-class DisplayController(
+class DisplayController private constructor(
     private val context: Context,
     private val scope: CoroutineScope
 ) {
+
+    companion object {
+        @Volatile
+        private var instance: DisplayController? = null
+
+        /**
+         * A single controller per process. Every host (settings screen, foreground
+         * service, accessibility service) shares it, so exactly one overlay window
+         * and one notification can ever exist.
+         */
+        fun get(context: Context, scope: CoroutineScope): DisplayController =
+            instance ?: synchronized(this) {
+                instance ?: DisplayController(context.applicationContext, scope)
+                    .also { instance = it }
+            }
+    }
 
     val notificationEngine = NotificationEngine(context)
     val overlayEngine = com.kabirbhasin.statuscalendar.engine.overlay.OverlayEngine(context)

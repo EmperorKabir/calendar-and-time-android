@@ -162,7 +162,7 @@ private fun SettingsScreen(repository: SettingsRepository) {
     // display never depends on a foreground service the OEM may refuse.
     val fallbackScope = rememberCoroutineScope()
     val fallbackController = remember {
-        com.kabirbhasin.statuscalendar.service.DisplayController(
+        com.kabirbhasin.statuscalendar.service.DisplayController.get(
             context.applicationContext, fallbackScope
         )
     }

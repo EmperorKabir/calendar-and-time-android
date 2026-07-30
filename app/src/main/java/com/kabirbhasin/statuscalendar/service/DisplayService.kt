@@ -37,7 +37,7 @@ class DisplayService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        controller = DisplayController(this, scope)
+        controller = DisplayController.get(this, scope)
         controller.onStopRequested = { stopSelf() }
         goForeground()
         controller.start()
