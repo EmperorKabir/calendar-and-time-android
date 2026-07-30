@@ -22,6 +22,15 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.draw.rotate
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.graphics.asImageBitmap
@@ -217,15 +226,38 @@ private fun SettingsScreen(repository: SettingsRepository) {
 
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp)) {
-                    Text("Display modes", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        "Android only lets an app put two things inside the real status bar: " +
-                            "notification icons, and the phone's own clock. Each mode below " +
-                            "trades length, fidelity and notification clutter differently. " +
-                            "Enable whichever combination suits your phone.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    var modesOpen by rememberSaveable { mutableStateOf(true) }
+                    val modesTurn by animateFloatAsState(
+                        if (modesOpen) 180f else 0f, label = "modesArrow"
                     )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { modesOpen = !modesOpen },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Display modes",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Icon(
+                            imageVector = Icons.Default.KeyboardArrowDown,
+                            contentDescription = if (modesOpen) "Collapse display modes"
+                            else "Expand display modes",
+                            modifier = Modifier.rotate(modesTurn)
+                        )
+                    }
+                    AnimatedVisibility(visible = modesOpen) {
+                        Text(
+                            "Android only lets an app put two things inside the real status " +
+                                "bar: notification icons, and the phone's own clock. Each mode " +
+                                "below trades length, fidelity and notification clutter " +
+                                "differently. Enable whichever combination suits your phone.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
 
@@ -240,293 +272,275 @@ private fun SettingsScreen(repository: SettingsRepository) {
                 }
             }
             HorizontalDivider()
-            Text("How it should appear", style = MaterialTheme.typography.titleMedium)
-            Text(
-                "These choices are mutually exclusive, so pick the one that suits you.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            // Re-checked whenever the screen resumes, so returning from the system
-            // permission page immediately unlocks the text modes.
-            var overlayReady by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
-            val lifecycleOwner = LocalLifecycleOwner.current
-            DisposableEffect(lifecycleOwner) {
-                val observer = LifecycleEventObserver { _, event ->
-                    if (event == Lifecycle.Event.ON_RESUME) {
-                        overlayReady = Settings.canDrawOverlays(context)
-                    }
-                }
-                lifecycleOwner.lifecycle.addObserver(observer)
-                onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-            }
-            val chip = remember {
-                com.kabirbhasin.statuscalendar.engine.notification
-                    .NotificationEngine(context).chipSupported()
-            }
-            if (chip) {
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text("Your phone can show text in the bar",
-                            style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            "This version of Android puts ongoing notifications in the status " +
-                                "bar as a small chip with words in it, not just an icon. " +
-                                "Compact uses it automatically, so you get readable text " +
-                                "without the draw over option and without its drawbacks.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-            ModeChoice(
-                label = "Compact",
-                description = if (chip)
-                    "Text in the status bar itself, shown as a chip beside the clock. " +
-                        "Your phone supports this, so nothing is drawn on top of anything."
-                else
-                    "A readable icon inside the status bar, beside the other app icons. " +
-                        "Long formats show the weekday above a large date number.",
-                selected = current.displayMode == DisplayMode.COMPACT,
-                enabled = true
-            ) { scope.launch { repository.setDisplayMode(DisplayMode.COMPACT) } }
-            ModeChoice(
-                label = "Full text",
-                description = if (overlayReady)
-                    "Your whole format, any length, with live seconds. Drawn over the " +
-                        "status bar, so it is hidden on the lock screen."
-                else
-                    "Needs permission to draw over other apps before it can be chosen.",
-                selected = current.displayMode == DisplayMode.FULL_TEXT,
-                enabled = overlayReady
-            ) { scope.launch { repository.setDisplayMode(DisplayMode.FULL_TEXT) } }
-            ModeChoice(
-                label = "Both",
-                description = if (overlayReady)
-                    "The icon and the full text together. The text is placed clear of " +
-                        "the clock so the two do not overlap."
-                else
-                    "Needs permission to draw over other apps before it can be chosen.",
-                selected = current.displayMode == DisplayMode.BOTH,
-                enabled = overlayReady
-            ) { scope.launch { repository.setDisplayMode(DisplayMode.BOTH) } }
-            if (!overlayReady) {
-                TextButton(onClick = {
-                    context.startActivity(
-                        Intent(
-                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                            Uri.parse("package:${context.packageName}")
-                        )
-                    )
-                }) { Text("Grant permission to draw over other apps") }
-            }
-            if (current.displayMode != DisplayMode.COMPACT && overlayReady) {
-                OverlayCalibration(current, repository)
-            }
-
-            ToggleRow(
-                "Start after reboot",
-                "Bring the display back automatically whenever the phone restarts.",
-                current.startOnBoot
-            ) { scope.launch { repository.setStartOnBoot(it) } }
-
-            HorizontalDivider()
-            Text("Presets", style = MaterialTheme.typography.titleMedium)
-            DropdownRow(
-                "Built in presets",
-                "Pick a ready made format.",
-                Presets.all.firstOrNull { it.spec == spec }?.label ?: "Custom",
-                Presets.all.map { it.label }
-            ) { index -> scope.launch { repository.setFormatSpec(Presets.all[index].spec) } }
-            if (current.savedPresets.isNotEmpty()) {
-                DropdownRow(
-                    "Your saved presets",
-                    "Apply one of your own saved formats.",
-                    current.savedPresets.firstOrNull { it.spec == spec }?.name ?: "Choose",
-                    current.savedPresets.map { it.name }
-                ) { index ->
-                    scope.launch { repository.setFormatSpec(current.savedPresets[index].spec) }
-                }
-            }
-
-            Text("Save current format", style = MaterialTheme.typography.titleMedium)
-            Text(
-                "Save the current format under a name, then bring it back with one tap.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            var presetName by remember { mutableStateOf("") }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedTextField(
-                    value = presetName,
-                    onValueChange = { presetName = it },
-                    singleLine = true,
-                    label = { Text("Preset name") },
-                    modifier = Modifier.weight(1f)
-                )
-                OutlinedButton(
-                    onClick = {
-                        val name = presetName.trim()
-                        if (name.isNotEmpty()) {
-                            scope.launch { repository.savePreset(name, spec) }
-                            presetName = ""
+            Section("How it should appear") {
+                // Re-checked whenever the screen resumes, so returning from the system
+                // permission page immediately unlocks the text modes.
+                var overlayReady by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
+                val lifecycleOwner = LocalLifecycleOwner.current
+                DisposableEffect(lifecycleOwner) {
+                    val observer = LifecycleEventObserver { _, event ->
+                        if (event == Lifecycle.Event.ON_RESUME) {
+                            overlayReady = Settings.canDrawOverlays(context)
                         }
                     }
-                ) { Text("Save") }
+                    lifecycleOwner.lifecycle.addObserver(observer)
+                    onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+                }
+                val chip = remember {
+                    com.kabirbhasin.statuscalendar.engine.notification
+                        .NotificationEngine(context).chipSupported()
+                }
+                if (chip) {
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(16.dp)) {
+                            Text("Your phone can show text in the bar",
+                                style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                "This version of Android puts ongoing notifications in the status " +
+                                    "bar as a small chip with words in it, not just an icon. " +
+                                    "Compact uses it automatically, so you get readable text " +
+                                    "without the draw over option and without its drawbacks.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+                ModeChoice(
+                    label = "Compact",
+                    description = if (chip)
+                        "Text in the status bar itself, shown as a chip beside the clock. " +
+                            "Your phone supports this, so nothing is drawn on top of anything."
+                    else
+                        "A readable icon inside the status bar, beside the other app icons. " +
+                            "Long formats show the weekday above a large date number.",
+                    selected = current.displayMode == DisplayMode.COMPACT,
+                    enabled = true
+                ) { scope.launch { repository.setDisplayMode(DisplayMode.COMPACT) } }
+                ModeChoice(
+                    label = "Full text",
+                    description = if (overlayReady)
+                        "Your whole format, any length, with live seconds. Drawn over the " +
+                            "status bar, so it is hidden on the lock screen."
+                    else
+                        "Needs permission to draw over other apps before it can be chosen.",
+                    selected = current.displayMode == DisplayMode.FULL_TEXT,
+                    enabled = overlayReady
+                ) { scope.launch { repository.setDisplayMode(DisplayMode.FULL_TEXT) } }
+                ModeChoice(
+                    label = "Both",
+                    description = if (overlayReady)
+                        "The icon and the full text together. The text is placed clear of " +
+                            "the clock so the two do not overlap."
+                    else
+                        "Needs permission to draw over other apps before it can be chosen.",
+                    selected = current.displayMode == DisplayMode.BOTH,
+                    enabled = overlayReady
+                ) { scope.launch { repository.setDisplayMode(DisplayMode.BOTH) } }
+                if (!overlayReady) {
+                    TextButton(onClick = {
+                        context.startActivity(
+                            Intent(
+                                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                Uri.parse("package:${context.packageName}")
+                            )
+                        )
+                    }) { Text("Grant permission to draw over other apps") }
+                }
+                if (current.displayMode != DisplayMode.COMPACT && overlayReady) {
+                    OverlayCalibration(current, repository)
+                }
+
+                ToggleRow(
+                    "Start after reboot",
+                    "Bring the display back automatically whenever the phone restarts.",
+                    current.startOnBoot
+                ) { scope.launch { repository.setStartOnBoot(it) } }
+
+
             }
-            if (current.savedPresets.isNotEmpty()) {
+
+            HorizontalDivider()
+            Section("Presets", subtitle = "Ready made formats and your own saved ones.") {
                 DropdownRow(
-                    "Delete a saved preset",
-                    "Removes one of your saved formats.",
-                    "Choose",
-                    current.savedPresets.map { it.name }
-                ) { index ->
-                    scope.launch { repository.deletePreset(current.savedPresets[index].name) }
+                    "Built in presets",
+                    "Pick a ready made format.",
+                    Presets.all.firstOrNull { it.spec == spec }?.label ?: "Custom",
+                    Presets.all.map { it.label }
+                ) { index -> scope.launch { repository.setFormatSpec(Presets.all[index].spec) } }
+                if (current.savedPresets.isNotEmpty()) {
+                    DropdownRow(
+                        "Your saved presets",
+                        "Apply one of your own saved formats.",
+                        current.savedPresets.firstOrNull { it.spec == spec }?.name ?: "Choose",
+                        current.savedPresets.map { it.name }
+                    ) { index ->
+                        scope.launch { repository.setFormatSpec(current.savedPresets[index].spec) }
+                    }
+                }
+
+                Text("Save current format", style = MaterialTheme.typography.titleMedium)
+                var presetName by remember { mutableStateOf("") }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = presetName,
+                        onValueChange = { presetName = it },
+                        singleLine = true,
+                        label = { Text("Preset name") },
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedButton(
+                        onClick = {
+                            val name = presetName.trim()
+                            if (name.isNotEmpty()) {
+                                scope.launch { repository.savePreset(name, spec) }
+                                presetName = ""
+                            }
+                        }
+                    ) { Text("Save") }
+                }
+                if (current.savedPresets.isNotEmpty()) {
+                    DropdownRow(
+                        "Delete a saved preset",
+                        "Removes one of your saved formats.",
+                        "Choose",
+                        current.savedPresets.map { it.name }
+                    ) { index ->
+                        scope.launch { repository.deletePreset(current.savedPresets[index].name) }
+                    }
                 }
             }
 
             HorizontalDivider()
-            Text("Custom format", style = MaterialTheme.typography.titleMedium)
 
-            DropdownRow(
-                "Element order",
-                "Choose which parts appear, and in what sequence.",
-                orderLabel(spec.order),
-                orderLabels
-            ) { index -> update { it.copy(order = elementOrders[index]) } }
-
-            DropdownRow(
-                "Separator between parts",
-                "The text placed between the day, date and time.",
-                joinerLabel(spec.separator),
-                joinerLabels
-            ) { index -> update { it.copy(separator = joiners[index]) } }
-
-            DropdownRow(
-                "Day of week",
-                "Choose how the weekday name is written.",
-                dowLabel(spec.dowStyle),
-                dowLabels
-            ) { index -> update { it.copy(dowStyle = DowStyle.entries[index]) } }
-
-            Text("Date", style = MaterialTheme.typography.labelLarge)
-            ToggleRow(
-                "Day of month",
-                "Show the day number, such as 27.",
-                spec.dateConfig.showDay
-            ) { v -> update { it.copy(dateConfig = it.dateConfig.copy(showDay = v)) } }
-            ToggleRow(
-                "Ordinal day",
-                "Write the day as 1st, 2nd or 3rd. This overrides the two digit option.",
-                spec.dateConfig.dayOrdinal
-            ) { v -> update { it.copy(dateConfig = it.dateConfig.copy(dayOrdinal = v)) } }
-            if (spec.dateConfig.dayOrdinal) {
-                ToggleRow(
-                    "Raised suffix",
-                    "Raise the ending slightly, so the date reads 1ˢᵗ rather than 1st.",
-                    spec.dateConfig.ordinalSuperscript
-                ) { v -> update { it.copy(dateConfig = it.dateConfig.copy(ordinalSuperscript = v)) } }
-            }
-            ToggleRow(
-                "Two digit day",
-                "Add a leading zero, so the first of the month reads 01 rather than 1.",
-                spec.dateConfig.dayPadded
-            ) { v -> update { it.copy(dateConfig = it.dateConfig.copy(dayPadded = v)) } }
-
-            DropdownRow(
-                "Month",
-                "Choose how the month is written.",
-                monthLabel(spec.dateConfig.monthStyle),
-                monthLabels
-            ) { index -> update { it.copy(dateConfig = it.dateConfig.copy(monthStyle = MonthStyle.entries[index])) } }
-
-            DropdownRow(
-                "Year",
-                "Choose how the year is written.",
-                yearLabel(spec.dateConfig.yearStyle),
-                yearLabels
-            ) { index -> update { it.copy(dateConfig = it.dateConfig.copy(yearStyle = YearStyle.entries[index])) } }
-
-            DropdownRow(
-                "Date part order",
-                "Choose the arrangement of day, month and year.",
-                dateOrderLabel(spec.dateConfig.order),
-                dateOrderLabels
-            ) { index -> update { it.copy(dateConfig = it.dateConfig.copy(order = DateOrder.entries[index])) } }
-
-            val numericMonth = spec.dateConfig.monthStyle == MonthStyle.NUMBER_PADDED ||
-                spec.dateConfig.monthStyle == MonthStyle.NUMBER
-            if (numericMonth) {
+            Section("Custom format", subtitle = "Build the exact wording yourself.", initiallyOpen = false) {
                 DropdownRow(
-                    "Date separator",
-                    "The character between the numbers of a numeric date, such as 27/07/2026.",
-                    dateSeparatorLabel(spec.dateConfig.separator),
-                    dateSeparators.map { dateSeparatorLabel(it) }
-                ) { index -> update { it.copy(dateConfig = it.dateConfig.copy(separator = dateSeparators[index])) } }
-            } else {
-                Text(
-                    "The date separator applies only when the month is shown as a number. " +
-                        "Written month names are spaced instead.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+                    "Element order",
+                    "Choose which parts appear, and in what sequence.",
+                    orderLabel(spec.order),
+                    orderLabels
+                ) { index -> update { it.copy(order = elementOrders[index]) } }
 
-            Text("Time", style = MaterialTheme.typography.labelLarge)
-            DropdownRow(
-                "Hours",
-                "Choose the clock style and whether hours carry a leading zero.",
-                hourLabel(spec.timeConfig.hourStyle),
-                hourLabels
-            ) { index -> update { it.copy(timeConfig = it.timeConfig.copy(hourStyle = HourStyle.entries[index])) } }
-            val secondsPossible = current.displayMode != DisplayMode.COMPACT
-            ToggleRow(
-                "Seconds",
-                if (secondsPossible)
-                    "Show live seconds, updated every second."
-                else
-                    "Unavailable in Compact, because a status bar icon cannot update once " +
-                        "every second. Choose Full text or Both to use seconds.",
-                spec.timeConfig.showSeconds && secondsPossible,
-                enabled = secondsPossible
-            ) { v -> update { it.copy(timeConfig = it.timeConfig.copy(showSeconds = v)) } }
-            DropdownRow(
-                "AM/PM",
-                "The morning or afternoon marker used by 12 hour clocks.",
-                amPmLabel(spec.timeConfig.amPm),
-                amPmLabels
-            ) { index -> update { it.copy(timeConfig = it.timeConfig.copy(amPm = AmPmStyle.entries[index])) } }
+                DropdownRow(
+                    "Separator between parts",
+                    "The text placed between the day, date and time.",
+                    joinerLabel(spec.separator),
+                    joinerLabels
+                ) { index -> update { it.copy(separator = joiners[index]) } }
 
-            ToggleRow(
-                "Calendar-icon stack",
-                "Show the weekday above the day number, like a desk calendar. Used by " +
-                    "the status bar icon.",
-                spec.stackMode
-            ) { v -> update { it.copy(stackMode = v) } }
+                DropdownRow(
+                    "Day of week",
+                    "Choose how the weekday name is written.",
+                    dowLabel(spec.dowStyle),
+                    dowLabels
+                ) { index -> update { it.copy(dowStyle = DowStyle.entries[index]) } }
 
-            HorizontalDivider()
-            var advancedOpen by remember { mutableStateOf(false) }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text("Advanced", style = MaterialTheme.typography.titleMedium)
+                Text("Date", style = MaterialTheme.typography.labelLarge)
+                ToggleRow(
+                    "Day of month",
+                    "Show the day number, such as 27.",
+                    spec.dateConfig.showDay
+                ) { v -> update { it.copy(dateConfig = it.dateConfig.copy(showDay = v)) } }
+                ToggleRow(
+                    "Ordinal day",
+                    "Write the day as 1st, 2nd or 3rd. This overrides the two digit option.",
+                    spec.dateConfig.dayOrdinal
+                ) { v -> update { it.copy(dateConfig = it.dateConfig.copy(dayOrdinal = v)) } }
+                if (spec.dateConfig.dayOrdinal) {
+                    ToggleRow(
+                        "Raised suffix",
+                        "Raise the ending slightly, so the date reads 1ˢᵗ rather than 1st.",
+                        spec.dateConfig.ordinalSuperscript
+                    ) { v -> update { it.copy(dateConfig = it.dateConfig.copy(ordinalSuperscript = v)) } }
+                }
+                ToggleRow(
+                    "Two digit day",
+                    "Add a leading zero, so the first of the month reads 01 rather than 1.",
+                    spec.dateConfig.dayPadded
+                ) { v -> update { it.copy(dateConfig = it.dateConfig.copy(dayPadded = v)) } }
+
+                DropdownRow(
+                    "Month",
+                    "Choose how the month is written.",
+                    monthLabel(spec.dateConfig.monthStyle),
+                    monthLabels
+                ) { index -> update { it.copy(dateConfig = it.dateConfig.copy(monthStyle = MonthStyle.entries[index])) } }
+
+                DropdownRow(
+                    "Year",
+                    "Choose how the year is written.",
+                    yearLabel(spec.dateConfig.yearStyle),
+                    yearLabels
+                ) { index -> update { it.copy(dateConfig = it.dateConfig.copy(yearStyle = YearStyle.entries[index])) } }
+
+                DropdownRow(
+                    "Date part order",
+                    "Choose the arrangement of day, month and year.",
+                    dateOrderLabel(spec.dateConfig.order),
+                    dateOrderLabels
+                ) { index -> update { it.copy(dateConfig = it.dateConfig.copy(order = DateOrder.entries[index])) } }
+
+                val numericMonth = spec.dateConfig.monthStyle == MonthStyle.NUMBER_PADDED ||
+                    spec.dateConfig.monthStyle == MonthStyle.NUMBER
+                if (numericMonth) {
+                    DropdownRow(
+                        "Date separator",
+                        "The character between the numbers of a numeric date, such as 27/07/2026.",
+                        dateSeparatorLabel(spec.dateConfig.separator),
+                        dateSeparators.map { dateSeparatorLabel(it) }
+                    ) { index -> update { it.copy(dateConfig = it.dateConfig.copy(separator = dateSeparators[index])) } }
+                } else {
                     Text(
-                        "System clock changes, extra icon slots and reliability settings.",
+                        "The date separator applies only when the month is shown as a number. " +
+                            "Written month names are spaced instead.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                TextButton(onClick = { advancedOpen = !advancedOpen }) {
-                    Text(if (advancedOpen) "Hide" else "Show")
-                }
+
+                Text("Time", style = MaterialTheme.typography.labelLarge)
+                DropdownRow(
+                    "Hours",
+                    "Choose the clock style and whether hours carry a leading zero.",
+                    hourLabel(spec.timeConfig.hourStyle),
+                    hourLabels
+                ) { index -> update { it.copy(timeConfig = it.timeConfig.copy(hourStyle = HourStyle.entries[index])) } }
+                val secondsPossible = current.displayMode != DisplayMode.COMPACT
+                ToggleRow(
+                    "Seconds",
+                    if (secondsPossible)
+                        "Show live seconds, updated every second."
+                    else
+                        "Unavailable in Compact, because a status bar icon cannot update once " +
+                            "every second. Choose Full text or Both to use seconds.",
+                    spec.timeConfig.showSeconds && secondsPossible,
+                    enabled = secondsPossible
+                ) { v -> update { it.copy(timeConfig = it.timeConfig.copy(showSeconds = v)) } }
+                DropdownRow(
+                    "AM/PM",
+                    "The morning or afternoon marker used by 12 hour clocks.",
+                    amPmLabel(spec.timeConfig.amPm),
+                    amPmLabels
+                ) { index -> update { it.copy(timeConfig = it.timeConfig.copy(amPm = AmPmStyle.entries[index])) } }
+
+                ToggleRow(
+                    "Calendar-icon stack",
+                    "Show the weekday above the day number, like a desk calendar. Used by " +
+                        "the status bar icon.",
+                    spec.stackMode
+                ) { v -> update { it.copy(stackMode = v) } }
             }
-            if (advancedOpen) {
+
+            HorizontalDivider()
+            Section(
+                "Advanced",
+                subtitle = "System clock changes, extra icon slots and reliability.",
+                initiallyOpen = false
+            ) {
             val slotEngine = remember { SlotEngine(context) }
             val installed = remember(current) { slotEngine.installedSlots().size }
             ToggleRow(
@@ -726,7 +740,30 @@ private fun PreviewCard(settings: AppSettings) {
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("What you will actually see", style = MaterialTheme.typography.titleMedium)
+            var previewOpen by rememberSaveable { mutableStateOf(true) }
+            val previewTurn by animateFloatAsState(
+                if (previewOpen) 180f else 0f, label = "previewArrow"
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { previewOpen = !previewOpen },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "What you will actually see",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f)
+                )
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowDown,
+                    contentDescription = if (previewOpen) "Collapse the preview"
+                    else "Expand the preview",
+                    modifier = Modifier.rotate(previewTurn)
+                )
+            }
+            AnimatedVisibility(visible = previewOpen) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
 
             val iconOn = settings.displayMode != DisplayMode.FULL_TEXT
             Text(
@@ -796,6 +833,51 @@ private fun PreviewCard(settings: AppSettings) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            }
+            }
+        }
+    }
+}
+
+/**
+ * A titled section that folds away. The arrow at the trailing edge turns to point
+ * down when open, and the whole row is tappable so the target is comfortably large.
+ */
+@Composable
+private fun Section(
+    title: String,
+    subtitle: String? = null,
+    initiallyOpen: Boolean = true,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    var open by rememberSaveable(title) { mutableStateOf(initiallyOpen) }
+    val turn by animateFloatAsState(if (open) 180f else 0f, label = "sectionArrow")
+    Column(Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { open = !open }
+                .padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleMedium)
+                if (subtitle != null) {
+                    Text(
+                        subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowDown,
+                contentDescription = if (open) "Collapse $title" else "Expand $title",
+                modifier = Modifier.rotate(turn)
+            )
+        }
+        AnimatedVisibility(visible = open) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { content() }
         }
     }
 }
