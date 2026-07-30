@@ -60,6 +60,12 @@ class DisplayController private constructor(
 
     private var collecting = false
 
+    init {
+        // Measure font coverage before the first render so raised endings are never
+        // drawn as empty boxes.
+        com.kabirbhasin.statuscalendar.core.format.GlyphProbe.probe()
+    }
+
     fun start() {
         // Hosts come and go; the collector must be started once and stay up. If the
         // settings flow ever terminates, the flag is cleared so it can be restarted

@@ -100,6 +100,7 @@ class MainActivity : ComponentActivity() {
             statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
         )
+        com.kabirbhasin.statuscalendar.core.format.GlyphProbe.probe()
         val repository = SettingsRepository(applicationContext)
         setContent {
             StatusCalendarTheme {
@@ -128,6 +129,19 @@ private fun orderLabel(order: List<DisplayElement>) =
     order.joinToString(" · ") { it.label() }
 
 private val joiners = listOf(", ", " ", " · ", " - ", " | ")
+
+// The status bar is white on some phones and black on others, and changes with the
+// wallpaper, so the colour cannot be assumed.
+private val overlayColours: List<Pair<String, Long>> = listOf(
+    "White" to 0xFFFFFFFF,
+    "Black" to 0xFF000000,
+    "Grey" to 0xFFBDBDBD,
+    "Amber" to 0xFFFFC107,
+    "Sky blue" to 0xFF4FC3F7
+)
+
+private fun overlayColourLabel(value: Long): String =
+    overlayColours.firstOrNull { it.second == value }?.first ?: "Custom"
 private val dowLabels = DowStyle.entries.map { dowLabel(it) }
 private val monthLabels = MonthStyle.entries.map { monthLabel(it) }
 private val yearLabels = YearStyle.entries.map { yearLabel(it) }
@@ -985,6 +999,16 @@ private fun OverlayCalibration(
             }
             SliderRow("Text size", style.textSizeSp, 8f..24f) {
                 scope.launch { repository.setOverlayStyle(style.copy(textSizeSp = it)) }
+            }
+            DropdownRow(
+                "Text colour",
+                "Match this to your status bar. A light bar needs dark text.",
+                overlayColourLabel(style.textColor),
+                overlayColours.map { it.first }
+            ) { index ->
+                scope.launch {
+                    repository.setOverlayStyle(style.copy(textColor = overlayColours[index].second))
+                }
             }
             ToggleRow(
                 "Hide in fullscreen",

@@ -111,16 +111,24 @@ class OverlayEngine(private val context: Context) : DisplayEngine {
      * punch holes and foldable posture changes are respected rather than assumed.
      */
     private fun statusBarHeight(): Int {
+        // The framework resource is the authority for the bar's own height. Insets on
+        // a LAYOUT_NO_LIMITS overlay can report a larger region than the bar itself,
+        // which pushed the text below the bar and out of sight, so insets are only
+        // consulted when the resource is unavailable and are clamped to a sane bound.
+        val resourceId = context.resources
+            .getIdentifier("status_bar_height", "dimen", "android")
+        val fromResource =
+            if (resourceId > 0) context.resources.getDimensionPixelSize(resourceId) else 0
+        if (fromResource > 0) return fromResource
+
         val fromInsets = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             view?.rootWindowInsets?.getInsets(WindowInsets.Type.statusBars())?.top ?: 0
         } else {
             @Suppress("DEPRECATION")
             view?.rootWindowInsets?.systemWindowInsetTop ?: 0
         }
-        if (fromInsets > 0) return fromInsets
-        val resourceId = context.resources
-            .getIdentifier("status_bar_height", "dimen", "android")
-        return if (resourceId > 0) context.resources.getDimensionPixelSize(resourceId) else 0
+        val ceiling = (context.resources.displayMetrics.density * 48).toInt()
+        return fromInsets.coerceAtMost(ceiling)
     }
 
     /**
@@ -133,11 +141,11 @@ class OverlayEngine(private val context: Context) : DisplayEngine {
         return cutout.boundingRects.maxOfOrNull { it.right } ?: 0
     }
 
-    /** Re-places the overlay after a fold, unfold or rotation. */
+    /**
+     * Re-places the overlay. Deliberately does NOT clear the insets latch: clearing it
+     * here made this method and the insets callback trigger each other endlessly.
+     */
     fun refreshPlacement() {
-        // Allow the insets callback to place once more, so a posture change is
-        // honoured even when no host delivers a configuration change.
-        placedFromInsets = false
         val current = view ?: return
         runCatching { windowManager.updateViewLayout(current, layoutParams()) }
     }
@@ -160,6 +168,14 @@ class OverlayEngine(private val context: Context) : DisplayEngine {
     private fun availableWidth(): Int =
         (context.resources.displayMetrics.widthPixels - startX()).coerceAtLeast(1)
 
+    /**
+     * Permits one further insets driven placement. Called on a real posture change,
+     * where the cutout and bar height genuinely differ from the last measurement.
+     */
+    fun allowReplacement() {
+        placedFromInsets = false
+    }
+
     private fun layoutParams() = WindowManager.LayoutParams(
         availableWidth(),
         WindowManager.LayoutParams.WRAP_CONTENT,
@@ -175,6 +191,8 @@ class OverlayEngine(private val context: Context) : DisplayEngine {
         // Centre the text within the status bar, then apply the user's nudge.
         val barHeight = statusBarHeight()
         val textHeight = (style.textSizeSp * context.resources.displayMetrics.scaledDensity).toInt()
-        y = ((barHeight - textHeight) / 2).coerceAtLeast(0) + style.offsetY
+        // Never place below the bar: the text must stay inside it whatever the nudge.
+        val centred = ((barHeight - textHeight) / 2).coerceAtLeast(0)
+        y = (centred + style.offsetY).coerceIn(0, (barHeight - textHeight / 2).coerceAtLeast(0))
     }
 }

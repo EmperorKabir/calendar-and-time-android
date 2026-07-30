@@ -87,8 +87,11 @@ object FormatEngine {
         return builder.toString()
     }
 
-    fun withOrdinal(day: Int, superscript: Boolean = false): String =
-        "$day${if (superscript) superscriptSuffix(day) else ordinalSuffix(day)}"
+    fun withOrdinal(day: Int, superscript: Boolean = false): String {
+        // Falling back to plain letters is always readable; a missing glyph is not.
+        val raised = superscript && SuperscriptSupport.available
+        return "$day${if (raised) superscriptSuffix(day) else ordinalSuffix(day)}"
+    }
 
     private fun ordinalSuffix(day: Int): String = when {
         day % 100 in 11..13 -> "th"

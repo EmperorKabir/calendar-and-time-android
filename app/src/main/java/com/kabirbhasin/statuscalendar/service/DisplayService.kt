@@ -52,7 +52,9 @@ class DisplayService : Service() {
 
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
         super.onConfigurationChanged(newConfig)
-        // Folding, unfolding and rotation all move the status bar and its cutouts.
+        // Folding, unfolding and rotation all move the status bar and its cutouts, so
+        // one further insets driven placement is permitted here.
+        controller.overlayEngine.allowReplacement()
         controller.overlayEngine.refreshPlacement()
     }
 
