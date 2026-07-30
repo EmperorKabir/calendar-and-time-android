@@ -22,7 +22,7 @@ object Presets {
                 ordinalSuperscript = true, monthStyle = MonthStyle.FULL,
                 yearStyle = YearStyle.FULL, order = DateOrder.DMY, separator = "/"
             ),
-            timeConfig = TimeConfig(HourStyle.H24_PADDED, showSeconds = false, amPm = AmPmStyle.NONE),
+            timeConfig = TimeConfig(HourStyle.H12, showSeconds = false, amPm = AmPmStyle.LOWERCASE),
             separator = ", ",
             stackMode = false
         )

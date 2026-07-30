@@ -684,13 +684,8 @@ private fun PreviewCard(settings: AppSettings) {
     val rendered = FormatEngine.render(settings.formatSpec, now, Locale.getDefault())
     val iconFactory = remember { IconFactory() }
     // The icon engine drops seconds, so preview exactly what it will draw.
-    val iconDisplay = rendered.copy(
-        line = FormatEngine.render(
-            settings.formatSpec.copy(
-                timeConfig = settings.formatSpec.timeConfig.copy(showSeconds = false)
-            ),
-            now, Locale.getDefault()
-        ).line
+    val iconDisplay = com.kabirbhasin.statuscalendar.core.format.IconDisplay.forSpec(
+        settings.formatSpec, now, Locale.getDefault()
     )
     val bitmap = remember(iconDisplay) { iconFactory.iconFor(iconDisplay) }
 
@@ -727,10 +722,10 @@ private fun PreviewCard(settings: AppSettings) {
             }
             val iconWarning = if (!iconOn) null else when {
                 iconDisplay.stackTop != null -> null
-                iconDisplay.line.length > 6 ->
-                    "Too long for one row, so it is split over two rows to stay readable. " +
-                        "Shorten the format, or choose Full text, if you would rather have " +
-                        "it on a single line."
+                iconDisplay.stackTop != null ->
+                    "This format is too long for one icon, so the icon shows the weekday " +
+                        "above a large day number. Choose Full text if you want the whole " +
+                        "format written out."
                 iconDisplay.line.isEmpty() -> "Nothing selected to show."
                 else -> null
             }
@@ -849,6 +844,14 @@ private fun OverlayCalibration(
             }
             SliderRow("Text size", style.textSizeSp, 8f..24f) {
                 scope.launch { repository.setOverlayStyle(style.copy(textSizeSp = it)) }
+            }
+            ToggleRow(
+                "Hide in fullscreen",
+                "Disappear while a video or game hides the status bar, so the text never " +
+                    "floats over fullscreen content.",
+                style.hideInFullscreen
+            ) { v ->
+                scope.launch { repository.setOverlayStyle(style.copy(hideInFullscreen = v)) }
             }
         }
     }

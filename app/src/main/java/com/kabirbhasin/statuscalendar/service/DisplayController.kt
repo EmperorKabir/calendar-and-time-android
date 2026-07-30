@@ -3,6 +3,7 @@ package com.kabirbhasin.statuscalendar.service
 import android.app.Notification
 import android.content.Context
 import com.kabirbhasin.statuscalendar.core.format.FormatEngine
+import com.kabirbhasin.statuscalendar.core.format.Presets
 import com.kabirbhasin.statuscalendar.core.format.RenderedDisplay
 import com.kabirbhasin.statuscalendar.core.prefs.AppSettings
 import com.kabirbhasin.statuscalendar.core.prefs.SettingsRepository
@@ -90,7 +91,12 @@ class DisplayController private constructor(
 
     /** Foreground notification for the hosting service, from current settings. */
     fun foregroundNotification(): Notification =
-        notificationEngine.build(currentDisplay(secondsCapable = false))
+        notificationEngine.build(
+            com.kabirbhasin.statuscalendar.core.format.IconDisplay.forSpec(
+                settings?.formatSpec ?: Presets.compactDate.spec,
+                ZonedDateTime.now(), Locale.getDefault()
+            )
+        )
 
     private fun applySettings(newSettings: AppSettings) {
         settings = newSettings
@@ -128,7 +134,12 @@ class DisplayController private constructor(
     private fun renderNow() {
         val current = settings ?: return
         if (!current.displayEnabled) return
-        notificationEngine.render(currentDisplay(secondsCapable = false))
+        notificationEngine.render(
+            com.kabirbhasin.statuscalendar.core.format.IconDisplay.forSpec(
+                settings?.formatSpec ?: Presets.compactDate.spec,
+                ZonedDateTime.now(), Locale.getDefault()
+            )
+        )
         if (current.slotEngineEnabled) {
             slotEngine.render(currentDisplay(secondsCapable = false))
         }

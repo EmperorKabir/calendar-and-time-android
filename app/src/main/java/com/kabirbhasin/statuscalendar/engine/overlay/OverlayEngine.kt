@@ -6,6 +6,7 @@ import android.os.Build
 import android.provider.Settings
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.View
 import android.view.WindowInsets
 import android.view.WindowManager
 import android.widget.TextView
@@ -43,6 +44,20 @@ class OverlayEngine(private val context: Context) : DisplayEngine {
             )
             maxLines = 1
             ellipsize = android.text.TextUtils.TruncateAt.END
+        }
+        // When a video or game goes fullscreen the status bar is hidden; the overlay
+        // must follow it rather than floating over the content.
+        textView.setOnApplyWindowInsetsListener { v, insets ->
+            if (style.hideInFullscreen) {
+                val barVisible = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    insets.isVisible(WindowInsets.Type.statusBars())
+                } else {
+                    @Suppress("DEPRECATION")
+                    insets.systemWindowInsetTop > 0
+                }
+                v.visibility = if (barVisible) View.VISIBLE else View.GONE
+            }
+            insets
         }
         runCatching {
             windowManager.addView(textView, layoutParams())
