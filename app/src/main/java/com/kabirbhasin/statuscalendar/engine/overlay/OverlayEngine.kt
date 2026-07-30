@@ -106,11 +106,23 @@ class OverlayEngine(private val context: Context) : DisplayEngine {
         runCatching { windowManager.updateViewLayout(current, layoutParams()) }
     }
 
-    /** Space left between the text's start edge and the right of the screen. */
-    private fun availableWidth(): Int {
+    /**
+     * Smallest x that clears the OEM clock. The clock sits at the leading edge, so a
+     * conservative reserve stops the text being drawn on top of it.
+     */
+    private fun clockReserve(): Int =
+        (context.resources.displayMetrics.widthPixels * 0.22f).toInt()
+
+    /** Start x, kept clear of the clock and any cutout, and inside the screen. */
+    private fun startX(): Int {
         val screen = context.resources.displayMetrics.widthPixels
-        return (screen - maxOf(style.offsetX, cutoutRight())).coerceAtLeast(1)
+        val minimum = maxOf(clockReserve(), cutoutRight())
+        return style.offsetX.coerceIn(minimum, (screen - 120).coerceAtLeast(minimum))
     }
+
+    /** Space left between the text's start edge and the right of the screen. */
+    private fun availableWidth(): Int =
+        (context.resources.displayMetrics.widthPixels - startX()).coerceAtLeast(1)
 
     private fun layoutParams() = WindowManager.LayoutParams(
         availableWidth(),
@@ -123,8 +135,7 @@ class OverlayEngine(private val context: Context) : DisplayEngine {
         PixelFormat.TRANSLUCENT
     ).apply {
         gravity = Gravity.TOP or Gravity.START
-        // Keep clear of a notch or punch hole when the user has not nudged past it.
-        x = maxOf(style.offsetX, cutoutRight())
+        x = startX()
         // Centre the text within the status bar, then apply the user's nudge.
         val barHeight = statusBarHeight()
         val textHeight = (style.textSizeSp * context.resources.displayMetrics.scaledDensity).toInt()

@@ -714,13 +714,18 @@ private fun PreviewCard(settings: AppSettings) {
                     contentDescription = "Live representation of the compact icon",
                     modifier = Modifier.size(26.dp)
                 )
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = "Enlarged view of the same icon",
+                    modifier = Modifier.size(52.dp)
+                )
                 Text(
-                    "Live representation of the compact icon in your status bar",
+                    "Live representation of the compact icon, shown at its real size and enlarged",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            val iconWarning = when {
+            val iconWarning = if (!iconOn) null else when {
                 iconDisplay.stackTop != null -> null
                 iconDisplay.line.length > 6 ->
                     "Too long for one row, so it is split over two rows to stay readable. " +
@@ -736,7 +741,7 @@ private fun PreviewCard(settings: AppSettings) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            if (settings.formatSpec.timeConfig.showSeconds) {
+            if (settings.formatSpec.timeConfig.showSeconds && iconOn) {
                 Text(
                     "Seconds are left out here, because an icon cannot update every second.",
                     style = MaterialTheme.typography.bodySmall,
@@ -835,7 +840,8 @@ private fun OverlayCalibration(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            SliderRow("Horizontal", style.offsetX.toFloat(), 0f..1400f) {
+            val screenWidth = LocalContext.current.resources.displayMetrics.widthPixels.toFloat()
+            SliderRow("Horizontal", style.offsetX.toFloat(), 0f..(screenWidth - 120f)) {
                 scope.launch { repository.setOverlayStyle(style.copy(offsetX = it.toInt())) }
             }
             SliderRow("Vertical", style.offsetY.toFloat(), 0f..200f) {

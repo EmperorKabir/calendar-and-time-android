@@ -106,6 +106,37 @@ bright content still needs an adaptive treatment.
 These are the interface redrawing wholesale on a mode change rather than updating in place,
 consistent with the overlay being destroyed and recreated (V4).
 
+### V14. Using the overlay adds a system notification of its own
+**Observed on the emulator during replication:** enabling a text mode produces a second entry,
+`com.android.server.wm.AlertWindowNotification`, posted by Android itself to say the app is
+displaying over other apps. It cannot be suppressed while the overlay is in use, so the text
+modes can never be truly notification free. Only Compact and the system clock route can.
+
+---
+
+## FIXES APPLIED AND VERIFIED 2026-07-28 (emulator replication of the video sequence)
+
+Cycling Compact -> Full text -> Both -> Compact -> Full text with state checked at each step:
+
+| Mode | Overlay windows | Our notifications |
+|------|-----------------|-------------------|
+| Compact | 0 | 1 |
+| Full text | 1 | 2 (ours + the Android alert-window notice) |
+| Both | 1 | 2 |
+| Compact | 0 | 1 |
+| Full text | 1 | 2 |
+
+- **V1, V2 fixed:** exactly one overlay window in every text mode and none in Compact, with no
+  accumulation across five switches. Cause removed by making the controller a single shared
+  instance so only one engine, and therefore one window, can exist.
+- **V4, V13 fixed:** the replacement is now posted before the previous one is removed, so the
+  bar is never empty during a mode change.
+- **V5, V6, V10 fixed:** the overlay start x is clamped between a reserve that clears the OEM
+  clock and the screen edge, its width is bounded by the space remaining, and the Horizontal
+  slider range is derived from the display width instead of a fixed 1400.
+- **V7 fixed:** icon-specific guidance and the seconds caveat only appear when Compact is in use.
+- **V8 fixed:** the preview shows the icon at true size and enlarged beside it.
+
 ---
 
 ## CONFIRMED WORKING (no action needed)

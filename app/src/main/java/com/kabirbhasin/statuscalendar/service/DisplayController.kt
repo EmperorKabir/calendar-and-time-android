@@ -105,8 +105,11 @@ class DisplayController private constructor(
         }
         // The foreground service owns this notification, so it always runs; the
         // toggle controls whether its icon draws anything.
+        // Bring the replacement up before tearing the old one down, so the bar is
+        // never momentarily empty when the mode changes.
         notificationEngine.start()
         notificationEngine.setIconVisible(newSettings.notificationEngineEnabled)
+        renderNow()
         if (newSettings.chainedEngineEnabled) chainedEngine.start() else chainedEngine.stop()
         if (newSettings.slotEngineEnabled) slotEngine.start() else slotEngine.stop()
         if (newSettings.overlayEngineEnabled && overlayEngine.canDraw()) {
