@@ -21,6 +21,7 @@ import com.kabirbhasin.statuscalendar.core.format.Presets
 import com.kabirbhasin.statuscalendar.core.format.YearStyle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.flow.map
 
 @androidx.compose.runtime.Immutable
@@ -98,8 +99,15 @@ class SettingsRepository(private val context: Context) {
 
     val flow: Flow<AppSettings> = context.dataStore.data
         .map { p -> runCatching { readSettings(p) }.getOrElse { defaults() } }
-        // Read errors (IO, corruption reported late) must degrade to defaults
-        // rather than cancelling the collector and killing the display forever.
+        // A read error must degrade to defaults for that emission without ending the
+        // flow: catch is terminal, so a single transient IO failure previously froze
+        // settings for the life of the process. Retrying keeps the stream alive.
+        .retryWhen { cause, attempt ->
+            if (cause is java.io.IOException && attempt < 3) {
+                kotlinx.coroutines.delay(200)
+                true
+            } else false
+        }
         .catch { emit(defaults()) }
 
     private fun defaults(): AppSettings = AppSettings(
@@ -192,7 +200,7 @@ class SettingsRepository(private val context: Context) {
         if (raw.isNullOrEmpty()) return emptyList()
         return raw.split("").mapNotNull { entry ->
             val f = entry.split("")
-            if (f.size != 6) return@mapNotNull null
+            if (f.size < 6) return@mapNotNull null
             runCatching {
                 SavedOverlayPreset(
                     f[0],
@@ -246,7 +254,10 @@ class SettingsRepository(private val context: Context) {
         if (raw.isNullOrEmpty()) return emptyList()
         return raw.split("").mapNotNull { entry ->
             val f = entry.split("")
-            if (f.size != 16) return@mapNotNull null
+                // Tolerate extra fields written by a newer version, and refuse only
+            // when required fields are genuinely missing, so an added property can
+            // never silently erase a user's saved presets.
+            if (f.size < 16) return@mapNotNull null
             runCatching {
                 SavedPreset(
                     name = f[0],

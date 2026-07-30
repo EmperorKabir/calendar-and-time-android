@@ -13,6 +13,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
 import java.time.ZonedDateTime
 import java.util.Locale
@@ -60,7 +61,9 @@ class DisplayController private constructor(
     private var collecting = false
 
     fun start() {
-        // Hosts come and go; the collector must be started once and stay up.
+        // Hosts come and go; the collector must be started once and stay up. If the
+        // settings flow ever terminates, the flag is cleared so it can be restarted
+        // rather than leaving the app permanently unable to see its own settings.
         if (collecting) {
             tickSource.start()
             return
@@ -69,6 +72,7 @@ class DisplayController private constructor(
         tickSource.start()
         repository.flow
             .onEach { applySettings(it) }
+            .onCompletion { collecting = false }
             .launchIn(scope)
     }
 
@@ -125,8 +129,10 @@ class DisplayController private constructor(
     private fun applySettings(newSettings: AppSettings) {
         settings = newSettings
         if (!newSettings.displayEnabled) {
-            // Clear every engine's output before the host stops, otherwise
-            // chained chunks posted earlier stay in the shade.
+            // Stop ticking first: leaving the ticker and the system receiver running
+            // after the display is switched off costs battery for nothing.
+            tickSource.setSecondsWanted(false)
+            tickSource.stop()
                 slotEngine.stop()
             overlayEngine.stop()
             onStopRequested?.invoke()

@@ -146,3 +146,39 @@ commit time and had never been re-checked when later commits reversed the change
 assertion that was true by construction for every input, and adding the first coverage of the
 saved-preset codecs. Emulator sweep: Compact 0 overlays / 1 notification, Full text and Both
 1 overlay / 2, back to Compact 0 / 1, zero crashes.
+
+## Third lens (reasoning) — findings applied 2026-07-31
+
+Four criticals were still open in the committed code, and four defects were introduced by
+the previous commit. All eight are now fixed.
+
+**Still open, now fixed**
+- **The chip showed a bare number.** It was fed `stackBottom`, which is the day of month
+  alone, so the promise of readable text produced "30". It now sends the stacked pair,
+  "FRI 31", six characters against the seven character budget.
+- **The preset codecs demanded an exact field count.** Adding one property to `FormatSpec`
+  would have silently dropped every saved preset, and the next save would have overwritten
+  the originals on disk. Decoding now tolerates extra fields and refuses only when required
+  ones are missing.
+- **A single transient IO error froze settings for the process lifetime.** `catch` is
+  terminal, and the controller's `collecting` flag was never reset, so every later toggle
+  wrote to disk and changed nothing. The flow now retries IO failures before degrading, and
+  the flag clears on completion so the collector can restart.
+- **Switching the display off left a 1 Hz ticker and a minute-cadence receiver running**
+  for the rest of the process lifetime. The disable path now stops the tick source first.
+
+**Introduced by the previous commit, now fixed**
+- Deleting the withdrawn engine removed its notification channel cleanup, undoing a fix for
+  orphans the owner had actually seen. The channel is now deleted alongside the IDs.
+- The overlay placement latch never cleared, so a fold was never honoured on hosts with no
+  service to deliver a configuration change.
+- The Play flavour lost the OEM icon caveat, which is the most useful guidance on devices
+  that substitute the app logo, and Play is the build most people install.
+
+**Measured**
+Release APK 1,268,769 to 1,176,437 bytes, a 92 KB reduction, by shipping only the English
+resources that actually exist rather than 87 merged locale tables. Lint passes. 43 tests
+pass. Emulator sweep: Compact 0 overlays / 1 notification, Full text and Both 1 / 2, back to
+Compact 0 / 1, disabled 0 / 0, zero crashes. The capability check is doing its job: on this
+AOSP image `canPostPromotedNotifications()` reports false, so no promotion is requested, the
+advertising card is hidden, and Compact is described as an icon rather than a chip.

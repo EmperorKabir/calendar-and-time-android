@@ -135,6 +135,9 @@ class OverlayEngine(private val context: Context) : DisplayEngine {
 
     /** Re-places the overlay after a fold, unfold or rotation. */
     fun refreshPlacement() {
+        // Allow the insets callback to place once more, so a posture change is
+        // honoured even when no host delivers a configuration change.
+        placedFromInsets = false
         val current = view ?: return
         runCatching { windowManager.updateViewLayout(current, layoutParams()) }
     }

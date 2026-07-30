@@ -189,6 +189,12 @@ private fun SettingsScreen(repository: SettingsRepository) {
     LaunchedEffect(Unit) {
         val manager = androidx.core.app.NotificationManagerCompat.from(context)
         (2000..2005).forEach { id -> runCatching { manager.cancel(id) } }
+        // Remove the withdrawn experiment's channel too, otherwise it lingers in the
+        // system notification settings for every upgrading install.
+        runCatching {
+            context.getSystemService(android.app.NotificationManager::class.java)
+                ?.deleteNotificationChannel("status_display_chain")
+        }
     }
 
     // On a tablet or an unfolded foldable the content is centred and width limited,
@@ -603,6 +609,12 @@ private fun SystemIntegrationCard() {
             if (sideloadOnly) {
                 val oem = remember { com.kabirbhasin.statuscalendar.core.oem.OemProfile.detect() }
                 Text("Your device: ${oem.label}", style = MaterialTheme.typography.labelLarge)
+                // The icon caveat is the single most useful line on devices that
+                // substitute the app logo, so it must appear in every flavour.
+                oem.iconCaveat?.let {
+                    Text(it, style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
                 oem.backgroundSteps.forEach {
                     Text("• $it", style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)

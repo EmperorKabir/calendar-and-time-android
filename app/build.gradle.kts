@@ -25,6 +25,10 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
+        // Only English strings exist, so shipping 87 merged locale tables wasted
+        // roughly 8% of the archive.
+        @Suppress("DEPRECATION")
+        resourceConfigurations += listOf("en")
     }
 
     flavorDimensions += "distribution"

@@ -111,7 +111,13 @@ class NotificationEngine(private val context: Context) : DisplayEngine {
                 // way of putting our text in the bar, so it needs no overlay at all.
                 // Promoting with text that will not fit yields an icon-only chip, so
                 // promotion is requested only when the format is genuinely short.
-                val chipText = display.stackBottom ?: contentText
+                // The stacked pair reads as a date ("THU 30"); stackBottom alone is a
+                // bare number and told the user nothing.
+                val chipText = when {
+                    display.stackTop != null ->
+                        "${display.stackTop} ${display.stackBottom}"
+                    else -> contentText
+                }
                 if (chipSupported() && iconVisible && chipText.length <= SHORT_TEXT_LIMIT) {
                     setRequestPromotedOngoing(true)
                     setShortCriticalText(chipText)
