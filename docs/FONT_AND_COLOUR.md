@@ -46,9 +46,12 @@ The overlay previously assumed a light on dark bar: white text with a dark shado
 way to change it. That is the same wrong assumption that produced the black status bar icon
 — a status bar is white on many phones, black on others, and changes with the wallpaper.
 
-**What was done:** a full colour control with three ways in, all editing the same stored
+**What was done:** a full colour control with four ways in, all editing the same stored
 value so they stay in step:
 
+- **Shade rectangle and hue slide** — the familiar two part picker. Saturation runs across
+  the rectangle and brightness down it, over the hue chosen on the rainbow slide beneath.
+  Both respond to tap and to drag, with a ring marking the current position on each.
 - **Swatches** — ten circles covering white and black for the two common bar backgrounds
   plus eight accents, with a ring marking the current selection.
 - **Hex field** — accepts `RGB`, `RRGGBB` and `AARRGGBB`, with or without a leading hash,

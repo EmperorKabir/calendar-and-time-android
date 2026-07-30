@@ -33,6 +33,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.material.icons.Icons
@@ -1116,6 +1124,104 @@ private fun OverlayCalibration(
  * an exact value, and channel sliders for adjusting by eye. All three edit the same
  * stored value, so whichever the user reaches for, the others follow.
  */
+/**
+ * The familiar two part picker: a shade rectangle for saturation and brightness, and a
+ * hue slide beneath it. Dragging or tapping either one updates the colour immediately.
+ */
+@Composable
+private fun ShadePicker(value: Long, onPick: (Long) -> Unit) {
+    val hsv = remember(value) {
+        FloatArray(3).also { android.graphics.Color.colorToHSV(value.toInt(), it) }
+    }
+    val alpha = ((value shr 24) and 0xFF).toInt()
+    var hue by remember(value) { mutableStateOf(hsv[0]) }
+    var saturation by remember(value) { mutableStateOf(hsv[1]) }
+    var brightness by remember(value) { mutableStateOf(hsv[2]) }
+
+    fun emit() {
+        val rgb = android.graphics.Color.HSVToColor(floatArrayOf(hue, saturation, brightness))
+        onPick(
+            ((alpha.toLong() and 0xFF) shl 24) or (rgb.toLong() and 0xFFFFFF)
+        )
+    }
+
+    val pureHue = Color(android.graphics.Color.HSVToColor(floatArrayOf(hue, 1f, 1f)))
+
+    // Saturation across, brightness down.
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(160.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(Brush.horizontalGradient(listOf(Color.White, pureHue)))
+            .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black)))
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(10.dp))
+            .pointerInput(hue) {
+                detectTapGestures { offset ->
+                    saturation = (offset.x / size.width).coerceIn(0f, 1f)
+                    brightness = 1f - (offset.y / size.height).coerceIn(0f, 1f)
+                    emit()
+                }
+            }
+            .pointerInput(hue) {
+                detectDragGestures { change, _ ->
+                    saturation = (change.position.x / size.width).coerceIn(0f, 1f)
+                    brightness = 1f - (change.position.y / size.height).coerceIn(0f, 1f)
+                    emit()
+                }
+            }
+            .semantics { contentDescription = "Saturation and brightness area" }
+    ) {
+        Canvas(Modifier.fillMaxSize()) {
+            val cx = saturation * size.width
+            val cy = (1f - brightness) * size.height
+            drawCircle(Color.White, radius = 10f, center = Offset(cx, cy), style = Stroke(3f))
+            drawCircle(Color.Black, radius = 13f, center = Offset(cx, cy), style = Stroke(1.5f))
+        }
+    }
+
+    Spacer(Modifier.size(10.dp))
+
+    // The hue slide.
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(34.dp)
+            .clip(RoundedCornerShape(17.dp))
+            .background(
+                Brush.horizontalGradient(
+                    (0..6).map { step ->
+                        Color(
+                            android.graphics.Color.HSVToColor(
+                                floatArrayOf(step * 60f, 1f, 1f)
+                            )
+                        )
+                    }
+                )
+            )
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(17.dp))
+            .pointerInput(Unit) {
+                detectTapGestures { offset ->
+                    hue = ((offset.x / size.width) * 360f).coerceIn(0f, 360f)
+                    emit()
+                }
+            }
+            .pointerInput(Unit) {
+                detectDragGestures { change, _ ->
+                    hue = ((change.position.x / size.width) * 360f).coerceIn(0f, 360f)
+                    emit()
+                }
+            }
+            .semantics { contentDescription = "Hue slide" }
+    ) {
+        Canvas(Modifier.fillMaxSize()) {
+            val x = (hue / 360f) * size.width
+            drawCircle(Color.White, radius = size.height / 2.6f,
+                center = Offset(x, size.height / 2), style = Stroke(4f))
+        }
+    }
+}
+
 @Composable
 private fun ColourPicker(value: Long, onPick: (Long) -> Unit) {
     val alpha = ((value shr 24) and 0xFF).toInt()
@@ -1135,6 +1241,13 @@ private fun ColourPicker(value: Long, onPick: (Long) -> Unit) {
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
+        ShadePicker(value = value, onPick = onPick)
+
+        Text(
+            "Or start from a ready made colour:",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         Row(
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
