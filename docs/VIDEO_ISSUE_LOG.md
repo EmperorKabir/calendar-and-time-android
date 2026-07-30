@@ -82,6 +82,32 @@ the display width.
 
 ---
 
+## Added by an independent second assessment (different regions and metrics)
+
+### V11. The compact icon never rendered once in the entire recording
+**Method:** measured ink in the notification-icon zone (x 90-300 of 1440) for all 806 samples.
+**Result:** median ink 0, maximum 25 (noise level). Even during the 2.9-5.1 s window when
+Compact was the selected mode, no icon was drawn. So on this device the Compact mode produced
+nothing at all for the whole 80 seconds, and the bar was simply empty (see V3).
+**Significance:** this is the ColorOS logo-substitution path failing outright rather than
+substituting, which makes Compact useless on this device instead of merely degraded.
+
+### V12. Overlay contrast collapses in places
+**Method:** measured the light-to-dark spread within the overlay strip every 2 s.
+**Result:** median spread 108 grey levels, but it falls to 30-33 at 20 s, 22 s and 24 s, and
+43-45 at 0 s, 2 s and 6 s. Below roughly 60 the text stops being comfortably legible.
+**Significance:** the text is hard to read for sustained periods, not only for a frame or two.
+The bold weight and shadow added after this recording address part of it, but placement over
+bright content still needs an adaptive treatment.
+
+### V13. Two sustained screen-change spikes align with mode switches
+**Method:** frame-to-frame delta over the whole screen at 10 fps.
+**Result:** two large spikes, 15.4 at 2.7 s and 15.2 at 5.0 s, bracketing the Compact window.
+These are the interface redrawing wholesale on a mode change rather than updating in place,
+consistent with the overlay being destroyed and recreated (V4).
+
+---
+
 ## CONFIRMED WORKING (no action needed)
 
 - Mode radio buttons are mutually exclusive and switch correctly (004–006, 069).
