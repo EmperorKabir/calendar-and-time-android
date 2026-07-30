@@ -56,6 +56,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -175,6 +176,9 @@ private fun SettingsScreen(repository: SettingsRepository) {
         }
     }
 
+    // On a tablet or an unfolded foldable the content is centred and width limited,
+    // so lines never stretch to an unreadable length.
+    val wideScreen = LocalConfiguration.current.screenWidthDp >= 600
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
@@ -183,6 +187,7 @@ private fun SettingsScreen(repository: SettingsRepository) {
             Column(
                 Modifier
                     .statusBarsPadding()
+                    .then(if (wideScreen) Modifier.widthIn(max = 720.dp) else Modifier)
                     .padding(horizontal = 16.dp)
             ) {
                 Text("Status Calendar", style = MaterialTheme.typography.headlineMedium)
@@ -196,6 +201,7 @@ private fun SettingsScreen(repository: SettingsRepository) {
             modifier = Modifier
                 .padding(innerPadding)
                 .navigationBarsPadding()
+                .then(if (wideScreen) Modifier.widthIn(max = 720.dp) else Modifier)
                 .padding(horizontal = 16.dp)
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(10.dp)

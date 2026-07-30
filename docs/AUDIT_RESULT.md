@@ -37,12 +37,20 @@ overlapped the same defect they are recorded once below under the strongest evid
 - A disabled chained engine issued six cancel calls per settings emission; now idempotent (R6).
 - `FOREGROUND_SERVICE_IMMEDIATE` was requested even when the icon was meant to be hidden.
 
-## Findings recorded but deliberately not acted on
+## Acted on after the audit, on the owner's instruction
 
-- **Notification promotion on Android 16** (C7-50): `core-ktx` 1.17.0 adds
-  `setRequestPromotedOngoing` and `EXTRA_SHORT_CRITICAL_TEXT`, which render a status bar chip
-  carrying text natively. This would replace much of what three subsystems here approximate.
-  It changes the product's architecture, so it is a decision for the owner, not the audit.
+- **Notification promotion on Android 16 (C7-50) — IMPLEMENTED.** Verified against current
+  documentation: a promoted ongoing notification is rendered as a status bar chip carrying
+  `shortCriticalText`. Requirements confirmed and all met: `POST_PROMOTED_NOTIFICATIONS`
+  declared, `setRequestPromotedOngoing(true)`, ongoing flag, a content title, standard style,
+  and a channel above IMPORTANCE_MIN. `androidx.core` moved 1.16.0 to 1.17.0; 1.19.0 was
+  rejected because it demands compileSdk 37 and AGP 9.1. Compact now uses the chip
+  automatically where the platform supports it, and the interface explains this.
+  **Status on the emulator:** the extras are present on the posted notification
+  (`android.shortCriticalText` confirmed via dumpsys on an API 36 image) but this AOSP
+  SystemUI does not draw chips, so rendering is unverified and needs a real Android 16 device.
+
+## Findings recorded but deliberately not acted on
 - **IMPORTANCE_MIN does not hide a foreground service icon** for an ordinary app; the
   documented suppression applies to privileged or platform-signed apps. The hidden-icon design
   rests on a false premise and needs rethinking rather than patching.
@@ -50,6 +58,19 @@ overlapped the same defect they are recorded once below under the strongest evid
   settings screen recomposes on every emission. Real, but a restructure rather than a fix.
 - Preservation gates rejected several tempting removals, notably that `build()`'s assignment to
   `lastRendered` is load-bearing, and that `SystemBarStyle.dark` must never become `auto`.
+
+## Large screens and foldables
+The settings screen now limits its content to 720dp and centres it on displays 600dp and
+wider, so an unfolded foldable or tablet does not stretch lines to an unreadable width. The
+activity declares `resizeableActivity` and handles size, layout, orientation, density and
+uiMode changes itself rather than being recreated, which previously risked tearing down the
+overlay on every fold or rotation. Verified by rotating the emulator to landscape and back:
+no crash, notification intact, no duplicate windows.
+
+## Play readiness
+`docs/store/PRIVACY_POLICY.md` and `docs/store/LISTING.md` now carry the privacy policy, the
+listing copy, the data safety declaration (nothing collected, nothing shared, no network
+permission) and the written justification for the specialUse foreground service type.
 
 ## Verification
 37 unit tests pass (25 before the audit; boundary tests added for 12-hour midnight and noon,

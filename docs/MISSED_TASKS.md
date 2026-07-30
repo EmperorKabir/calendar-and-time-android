@@ -20,13 +20,17 @@ user's request after repeated quality failures.
    and "Over the status bar" rather than naming mechanisms.
 7. **Icon cap workaround.** Companion slots are entitled to icon space but Android pushes
    them into the overflow dot. No solution attempted.
-8. **Foldable support.** PROJECT_RULES rule 1 requires fold and unfold postures, hinge
-   aware layouts and tabletop mode. Never addressed at all.
+8. ~~**Foldable and large screen support.**~~ DONE 2026-07-28: content width capped at 720dp
+   and centred at 600dp and above; the activity handles configuration changes itself instead
+   of being recreated. Rotation verified on the emulator with no crash and no window churn.
+   Hinge aware two pane layout is not implemented; the screen is a single scrolling column by
+   design, so a hinge split would add no information.
 9. ~~**App icon design.**~~ DONE 2026-07-28: adaptive icon redrawn as a calendar with a
    legible day numeral, with a monochrome layer for themed icons.
-10. **Play Store readiness — partly done 2026-07-28.** Release signing config now reads an
-    untracked `keystore.properties` (template committed, real file gitignored). Store
-    listing assets and privacy policy still absent.
+10. ~~**Play Store readiness.**~~ DONE 2026-07-28: release signing reads an untracked
+    `keystore.properties`; privacy policy, listing copy, data safety declaration and the
+    specialUse justification are written in `docs/store/`. Screenshots and the feature
+    graphic still need to be captured from a real device before submission.
 
 ## B. Claimed or implied done without verification
 11. ~~**Full UK preset.**~~ DONE 2026-07-28: rendered live in the status bar as
