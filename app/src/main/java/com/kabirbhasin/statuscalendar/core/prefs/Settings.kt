@@ -35,6 +35,8 @@ enum class DisplayMode { COMPACT, FULL_TEXT, BOTH }
 
 data class SavedPreset(val name: String, val spec: FormatSpec)
 
+data class SavedOverlayPreset(val name: String, val style: OverlayStyle)
+
 data class AppSettings(
     val displayEnabled: Boolean,
     val notificationEngineEnabled: Boolean,
@@ -45,7 +47,8 @@ data class AppSettings(
     val startOnBoot: Boolean,
     val formatSpec: FormatSpec,
     val overlayStyle: OverlayStyle,
-    val savedPresets: List<SavedPreset>
+    val savedPresets: List<SavedPreset>,
+    val savedOverlayPresets: List<SavedOverlayPreset>
 )
 
 private val Context.dataStore by preferencesDataStore(
@@ -88,6 +91,7 @@ class SettingsRepository(private val context: Context) {
         val overlayColor = stringPreferencesKey("overlay_color")
         val overlayHideFullscreen = booleanPreferencesKey("overlay_hide_fullscreen")
         val savedPresets = stringPreferencesKey("saved_presets")
+        val savedOverlayPresets = stringPreferencesKey("saved_overlay_presets")
     }
 
     val flow: Flow<AppSettings> = context.dataStore.data
@@ -106,7 +110,8 @@ class SettingsRepository(private val context: Context) {
         startOnBoot = true,
         formatSpec = Presets.compactDate.spec,
         overlayStyle = OverlayStyle(420, 0, 13f, 0xFFFFFFFF, true),
-        savedPresets = emptyList()
+        savedPresets = emptyList(),
+        savedOverlayPresets = emptyList()
     )
 
     private fun readSettings(p: androidx.datastore.preferences.core.Preferences): AppSettings {
@@ -149,8 +154,58 @@ class SettingsRepository(private val context: Context) {
                 textColor = p.safe(Keys.overlayColor)?.toLongOrNull(16) ?: 0xFFFFFFFF,
                 hideInFullscreen = p.safe(Keys.overlayHideFullscreen) ?: true
             ),
-            savedPresets = decodePresets(p.safe(Keys.savedPresets))
+            savedPresets = decodePresets(p.safe(Keys.savedPresets)),
+            savedOverlayPresets = decodeOverlayPresets(p.safe(Keys.savedOverlayPresets))
         )
+    }
+
+    val defaultOverlayStyle = OverlayStyle(420, 0, 13f, 0xFFFFFFFF, true)
+
+    suspend fun resetOverlayStyle() = setOverlayStyle(defaultOverlayStyle)
+
+    suspend fun saveOverlayPreset(name: String, style: OverlayStyle) =
+        context.dataStore.edit { prefs ->
+            val kept = decodeOverlayPresets(prefs[Keys.savedOverlayPresets])
+                .filterNot { it.name.equals(name, ignoreCase = true) }
+            prefs[Keys.savedOverlayPresets] =
+                (kept + SavedOverlayPreset(name, style)).joinToString("") { o ->
+                    listOf(
+                        o.name, o.style.offsetX, o.style.offsetY, o.style.textSizeSp,
+                        o.style.textColor.toString(16), o.style.hideInFullscreen
+                    ).joinToString("")
+                }
+        }
+
+    suspend fun deleteOverlayPreset(name: String) = context.dataStore.edit { prefs ->
+        prefs[Keys.savedOverlayPresets] =
+            decodeOverlayPresets(prefs[Keys.savedOverlayPresets])
+                .filterNot { it.name == name }
+                .joinToString("") { o ->
+                    listOf(
+                        o.name, o.style.offsetX, o.style.offsetY, o.style.textSizeSp,
+                        o.style.textColor.toString(16), o.style.hideInFullscreen
+                    ).joinToString("")
+                }
+    }
+
+    private fun decodeOverlayPresets(raw: String?): List<SavedOverlayPreset> {
+        if (raw.isNullOrEmpty()) return emptyList()
+        return raw.split("").mapNotNull { entry ->
+            val f = entry.split("")
+            if (f.size != 6) return@mapNotNull null
+            runCatching {
+                SavedOverlayPreset(
+                    f[0],
+                    OverlayStyle(
+                        offsetX = f[1].toInt(),
+                        offsetY = f[2].toInt(),
+                        textSizeSp = f[3].toFloat(),
+                        textColor = f[4].toLong(16),
+                        hideInFullscreen = f[5].toBoolean()
+                    )
+                )
+            }.getOrNull()
+        }
     }
 
     suspend fun savePreset(name: String, spec: FormatSpec) = context.dataStore.edit { prefs ->

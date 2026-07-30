@@ -77,7 +77,7 @@ class SlotReceiver : BroadcastReceiver() {
     }
 
     private fun render(text: String, top: String?, bottom: String?): Bitmap {
-        val size = 192
+        val size = 96
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -99,11 +99,32 @@ class SlotReceiver : BroadcastReceiver() {
 
         fun baseline(centreY: Float) = centreY - (paint.descent() + paint.ascent()) / 2f
 
+        // Text that would render too small to read is split across two rows instead.
+        fun tooSmall(value: String): Boolean {
+            fit(value, size * 0.96f, size * 0.62f)
+            return paint.textSize < size * 0.34f
+        }
+
         if (top != null && bottom != null) {
             fit(top, size * 0.94f, size * 0.30f)
             canvas.drawText(top, size / 2f, baseline(size * 0.19f), paint)
             fit(bottom, size * 0.94f, size * 0.58f)
             canvas.drawText(bottom, size / 2f, baseline(size * 0.66f), paint)
+        } else if (text.isNotEmpty() && tooSmall(text)) {
+            val words = text.split(" ").filter { it.isNotEmpty() }
+            // A single long word must be cut in half, not duplicated: joining an empty
+            // remainder previously left the whole word on top and its tail below.
+            val (first, second) = if (words.size < 2) {
+                val half = (text.length + 1) / 2
+                text.take(half) to text.drop(half)
+            } else {
+                val mid = (words.size + 1) / 2
+                words.take(mid).joinToString(" ") to words.drop(mid).joinToString(" ")
+            }
+            fit(first, size * 0.94f, size * 0.42f)
+            canvas.drawText(first, size / 2f, baseline(size * 0.26f), paint)
+            fit(second, size * 0.94f, size * 0.42f)
+            canvas.drawText(second, size / 2f, baseline(size * 0.72f), paint)
         } else if (text.isNotEmpty()) {
             fit(text, size * 0.96f, size * 0.62f)
             canvas.drawText(text, size / 2f, baseline(size / 2f), paint)

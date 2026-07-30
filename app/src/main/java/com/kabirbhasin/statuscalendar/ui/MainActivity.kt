@@ -878,6 +878,65 @@ private fun OverlayCalibration(
             ) { v ->
                 scope.launch { repository.setOverlayStyle(style.copy(hideInFullscreen = v)) }
             }
+
+            HorizontalDivider()
+            Text("Saved positions", style = MaterialTheme.typography.labelLarge)
+            Text(
+                "Keep a position and size you like, then bring it back on any phone.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (settings.savedOverlayPresets.isNotEmpty()) {
+                DropdownRow(
+                    "Apply a saved position",
+                    "Restores the horizontal, vertical and size settings.",
+                    settings.savedOverlayPresets
+                        .firstOrNull { it.style == style }?.name ?: "Choose",
+                    settings.savedOverlayPresets.map { it.name }
+                ) { index ->
+                    scope.launch {
+                        repository.setOverlayStyle(settings.savedOverlayPresets[index].style)
+                    }
+                }
+            }
+            var overlayName by remember { mutableStateOf("") }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = overlayName,
+                    onValueChange = { overlayName = it },
+                    singleLine = true,
+                    label = { Text("Position name") },
+                    modifier = Modifier.weight(1f)
+                )
+                OutlinedButton(onClick = {
+                    val name = overlayName.trim()
+                    if (name.isNotEmpty()) {
+                        scope.launch { repository.saveOverlayPreset(name, style) }
+                        overlayName = ""
+                    }
+                }) { Text("Save") }
+            }
+            settings.savedOverlayPresets.forEach { saved ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(saved.name, modifier = Modifier.weight(1f))
+                    TextButton(onClick = {
+                        scope.launch { repository.setOverlayStyle(saved.style) }
+                    }) { Text("Apply") }
+                    TextButton(onClick = {
+                        scope.launch { repository.deleteOverlayPreset(saved.name) }
+                    }) { Text("Delete") }
+                }
+            }
+            TextButton(onClick = { scope.launch { repository.resetOverlayStyle() } }) {
+                Text("Reset position and size to default")
+            }
         }
     }
 }

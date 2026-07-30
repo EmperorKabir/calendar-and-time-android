@@ -82,19 +82,21 @@ class SlotEngine(private val context: Context) : DisplayEngine {
         }
     }
 
-    /** Splits on word boundaries where possible so each slot holds whole words. */
+    /**
+     * Each slot is one small square, so the text is divided by meaning rather than by
+     * word count: the first slot carries the weekday and date as a calendar, the rest
+     * take one element each. Chopping a sentence across slots produced text too small
+     * to read.
+     */
     private fun split(display: RenderedDisplay, slots: Int): List<String> {
         if (display.stackTop != null) {
             return List(slots) { if (it == 0) "${display.stackTop} ${display.stackBottom}" else "" }
         }
-        val words = display.line.split(" ").filter { it.isNotEmpty() }
-        if (words.isEmpty()) return List(slots) { "" }
-        if (words.size >= slots) {
-            val perSlot = (words.size + slots - 1) / slots
-            return List(slots) { index ->
-                words.drop(index * perSlot).take(perSlot).joinToString(" ")
-            }
-        }
-        return List(slots) { words.getOrElse(it) { "" } }
+        val pieces = display.line
+            .split(",", "·", "|", " - ")
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+        if (pieces.isEmpty()) return List(slots) { "" }
+        return List(slots) { index -> pieces.getOrElse(index) { "" } }
     }
 }
