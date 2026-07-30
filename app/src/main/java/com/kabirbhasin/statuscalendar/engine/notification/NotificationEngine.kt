@@ -20,9 +20,18 @@ class NotificationEngine(private val context: Context) : DisplayEngine {
         const val CHANNEL_ID = "status_display"
         const val SILENT_CHANNEL_ID = "status_service"
         const val NOTIFICATION_ID = 1001
+
+        /** The chip is a small surface; longer strings are dropped by the system. */
+        const val SHORT_TEXT_LIMIT = 24
     }
 
     private val iconFactory = IconFactory()
+
+    /**
+     * True when the platform renders promoted ongoing notifications as a status bar
+     * chip. The chip carries text, unlike an icon, so long formats stay readable.
+     */
+    fun chipSupported(): Boolean = Build.VERSION.SDK_INT >= 36
     private var lastRendered: RenderedDisplay? = null
     private var active = false
     private var iconVisible = true
@@ -85,6 +94,15 @@ class NotificationEngine(private val context: Context) : DisplayEngine {
                 if (iconVisible) NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE
                 else NotificationCompat.FOREGROUND_SERVICE_DEFERRED
             )
+            .apply {
+                // Android 16 promotes an ongoing notification to a status bar chip and
+                // renders the short critical text inside it. That is the platform's own
+                // way of putting our text in the bar, so it needs no overlay at all.
+                if (chipSupported() && iconVisible) {
+                    setRequestPromotedOngoing(true)
+                    setShortCriticalText(contentText.take(SHORT_TEXT_LIMIT))
+                }
+            }
             .build()
     }
 

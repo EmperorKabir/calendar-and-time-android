@@ -8,6 +8,9 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Android 16 renders a promoted ongoing notification as a status bar chip
+         carrying our text, which is the platform's own version of this feature. -->
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
     <!-- Declared by both packages so the grant works whichever installs first. -->
     <permission
         android:name="com.kabirbhasin.statuscalendar.SLOT_CONTROL"

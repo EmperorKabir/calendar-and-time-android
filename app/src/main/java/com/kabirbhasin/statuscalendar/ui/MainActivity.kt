@@ -245,10 +245,34 @@ private fun SettingsScreen(repository: SettingsRepository) {
                 lifecycleOwner.lifecycle.addObserver(observer)
                 onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
             }
+            val chip = remember {
+                com.kabirbhasin.statuscalendar.engine.notification
+                    .NotificationEngine(context).chipSupported()
+            }
+            if (chip) {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text("Your phone can show text in the bar",
+                            style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            "This version of Android puts ongoing notifications in the status " +
+                                "bar as a small chip with words in it, not just an icon. " +
+                                "Compact uses it automatically, so you get readable text " +
+                                "without the draw over option and without its drawbacks.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
             ModeChoice(
                 label = "Compact",
-                description = "A readable icon inside the status bar, beside the other " +
-                    "app icons. Long formats are split over two rows automatically.",
+                description = if (chip)
+                    "Text in the status bar itself, shown as a chip beside the clock. " +
+                        "Your phone supports this, so nothing is drawn on top of anything."
+                else
+                    "A readable icon inside the status bar, beside the other app icons. " +
+                        "Long formats show the weekday above a large date number.",
                 selected = current.displayMode == DisplayMode.COMPACT,
                 enabled = true
             ) { scope.launch { repository.setDisplayMode(DisplayMode.COMPACT) } }
