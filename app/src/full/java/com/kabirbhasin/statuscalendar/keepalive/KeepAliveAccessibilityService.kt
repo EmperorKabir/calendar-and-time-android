@@ -20,14 +20,14 @@ class KeepAliveAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
-        controller = DisplayController.get(this, scope).also {
+        controller = DisplayController.get(this).also {
             it.onStopRequested = { controller?.stop() }
             it.start()
         }
     }
 
     override fun onDestroy() {
-        controller?.stop()
+        // Shared controller: do not stop it, another host may still be using it.
         controller = null
         scope.cancel()
         super.onDestroy()

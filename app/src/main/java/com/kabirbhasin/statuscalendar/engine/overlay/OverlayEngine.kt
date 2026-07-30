@@ -48,6 +48,9 @@ class OverlayEngine(private val context: Context) : DisplayEngine {
         // When a video or game goes fullscreen the status bar is hidden; the overlay
         // must follow it rather than floating over the content.
         textView.setOnApplyWindowInsetsListener { v, insets ->
+            // Insets are unavailable until the window is attached, so the first
+            // placement cannot know the cutout. Re-place as soon as they arrive.
+            refreshPlacement()
             if (style.hideInFullscreen) {
                 val barVisible = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     insets.isVisible(WindowInsets.Type.statusBars())
@@ -66,8 +69,13 @@ class OverlayEngine(private val context: Context) : DisplayEngine {
     }
 
     override fun stop() {
-        view?.let { runCatching { windowManager.removeView(it) } }
-        view = null
+        val current = view ?: return
+        // Only forget the view if removal succeeded, otherwise the window is
+        // orphaned on screen with no reference left to remove it later.
+        runCatching { windowManager.removeView(current) }
+            .onSuccess { view = null }
+            .onFailure { runCatching { windowManager.removeViewImmediate(current) }
+                .onSuccess { view = null } }
     }
 
     override fun render(display: RenderedDisplay) {

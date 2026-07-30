@@ -37,10 +37,15 @@ class DisplayService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        controller = DisplayController.get(this, scope)
+        controller = DisplayController.get(this)
         controller.onStopRequested = { stopSelf() }
-        goForeground()
-        controller.start()
+        // Only take ownership of the display if the system actually let us go
+        // foreground; otherwise leave it to whichever host is already running.
+        if (startedForeground()) {
+            controller.start()
+        } else {
+            stopSelf()
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
@@ -52,16 +57,15 @@ class DisplayService : Service() {
     }
 
     override fun onDestroy() {
-        controller.stop()
-        scope.cancel()
+        // The controller is shared; tearing it down here would blank the display
+        // for the settings screen and the accessibility host as well.
         super.onDestroy()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    private fun goForeground() = runCatching { startForegroundInternal() }
-        .onFailure { stopSelf() }
-        .let { }
+    private fun startedForeground(): Boolean =
+        runCatching { startForegroundInternal() }.isSuccess
 
     private fun startForegroundInternal() {
         val notification = controller.foregroundNotification()

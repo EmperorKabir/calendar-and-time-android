@@ -160,11 +160,8 @@ private fun SettingsScreen(repository: SettingsRepository) {
     }
     // Start the service where permitted, and always render directly as well so the
     // display never depends on a foreground service the OEM may refuse.
-    val fallbackScope = rememberCoroutineScope()
     val fallbackController = remember {
-        com.kabirbhasin.statuscalendar.service.DisplayController.get(
-            context.applicationContext, fallbackScope
-        )
+        com.kabirbhasin.statuscalendar.service.DisplayController.get(context.applicationContext)
     }
     LaunchedEffect(current) {
         if (current.displayEnabled) DisplayService.start(context)
@@ -715,13 +712,14 @@ private fun PreviewCard(settings: AppSettings) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            val iconWarning = if (!iconOn) null else when {
-                iconDisplay.stackTop != null -> null
+            val iconWarning = when {
+                !iconOn -> null
+                iconDisplay.line.isEmpty() && iconDisplay.stackTop == null ->
+                    "Nothing is selected to show."
                 iconDisplay.stackTop != null ->
                     "There is only room for a few characters here, so the day of the week " +
                         "is shown above a large date number. Pick the draw over option if " +
                         "you want the whole thing written out."
-                iconDisplay.line.isEmpty() -> "Nothing selected to show."
                 else -> null
             }
             iconWarning?.let {

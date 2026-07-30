@@ -10,6 +10,8 @@ import com.kabirbhasin.statuscalendar.core.prefs.SettingsRepository
 import com.kabirbhasin.statuscalendar.core.tick.TickSource
 import com.kabirbhasin.statuscalendar.engine.notification.NotificationEngine
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import java.time.ZonedDateTime
@@ -21,9 +23,14 @@ import java.util.Locale
  * settings, listens to ticks, renders through whichever engines are enabled.
  */
 class DisplayController private constructor(
-    private val context: Context,
-    private val scope: CoroutineScope
+    private val context: Context
 ) {
+
+    // The controller outlives any single host, so it owns its scope. Borrowing a
+    // caller's scope meant an Activity being destroyed silently killed the settings
+    // collector and the seconds ticker for every other host.
+    private val scope: CoroutineScope =
+        CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     companion object {
         @Volatile
@@ -34,9 +41,9 @@ class DisplayController private constructor(
          * service, accessibility service) shares it, so exactly one overlay window
          * and one notification can ever exist.
          */
-        fun get(context: Context, scope: CoroutineScope): DisplayController =
+        fun get(context: Context): DisplayController =
             instance ?: synchronized(this) {
-                instance ?: DisplayController(context.applicationContext, scope)
+                instance ?: DisplayController(context.applicationContext)
                     .also { instance = it }
             }
     }
@@ -52,7 +59,15 @@ class DisplayController private constructor(
     private var settings: AppSettings? = null
     var onStopRequested: (() -> Unit)? = null
 
+    private var collecting = false
+
     fun start() {
+        // Hosts come and go; the collector must be started once and stay up.
+        if (collecting) {
+            tickSource.start()
+            return
+        }
+        collecting = true
         tickSource.start()
         repository.flow
             .onEach { applySettings(it) }
@@ -73,6 +88,9 @@ class DisplayController private constructor(
      */
     fun renderOnceFrom(appSettings: AppSettings) {
         settings = appSettings
+        // A departing service may have stopped the ticker; bring it back or the
+        // clock freezes while the settings screen is open.
+        if (appSettings.displayEnabled) tickSource.start()
         if (!appSettings.displayEnabled) {
             notificationEngine.stop()
             overlayEngine.stop()

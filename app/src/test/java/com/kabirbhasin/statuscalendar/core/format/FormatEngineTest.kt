@@ -158,6 +158,49 @@ class FormatEngineTest {
         assertEquals("21ˢᵗ", FormatEngine.withOrdinal(21, superscript = true))
     }
 
+    // 12-hour boundaries: a regression to hour % 12 passes every other test here.
+    @Test fun midnightIs12AmNot0() {
+        val midnight = ZonedDateTime.of(2026, 1, 1, 0, 5, 0, 0, zone)
+        assertEquals("12:05 am", render(spec(order = listOf(DisplayElement.TIME),
+            timeConfig = TimeConfig(HourStyle.H12, false, AmPmStyle.LOWERCASE)), midnight))
+    }
+
+    @Test fun noonIs12PmNot0() {
+        val noon = ZonedDateTime.of(2026, 1, 1, 12, 5, 0, 0, zone)
+        assertEquals("12:05 pm", render(spec(order = listOf(DisplayElement.TIME),
+            timeConfig = TimeConfig(HourStyle.H12, false, AmPmStyle.LOWERCASE)), noon))
+    }
+
+    @Test fun elevenFiftyNineIsAm() {
+        val t = ZonedDateTime.of(2026, 1, 1, 11, 59, 0, 0, zone)
+        assertEquals("11:59 am", render(spec(order = listOf(DisplayElement.TIME),
+            timeConfig = TimeConfig(HourStyle.H12, false, AmPmStyle.LOWERCASE)), t))
+    }
+
+    @Test fun twelveOhOneIsPm() {
+        val t = ZonedDateTime.of(2026, 1, 1, 12, 1, 0, 0, zone)
+        assertEquals("12:01 pm", render(spec(order = listOf(DisplayElement.TIME),
+            timeConfig = TimeConfig(HourStyle.H12, false, AmPmStyle.LOWERCASE)), t))
+    }
+
+    @Test fun midnightPaddedTwelveHour() {
+        val midnight = ZonedDateTime.of(2026, 1, 1, 0, 5, 0, 0, zone)
+        assertEquals("12:05", render(spec(order = listOf(DisplayElement.TIME),
+            timeConfig = TimeConfig(HourStyle.H12_PADDED, false, AmPmStyle.NONE)), midnight))
+    }
+
+    @Test fun hiddenDayLeavesMonthAndYear() {
+        assertEquals("January 2026", render(spec(
+            order = listOf(DisplayElement.DATE),
+            dateConfig = date.copy(showDay = false, monthStyle = MonthStyle.FULL,
+                yearStyle = YearStyle.FULL))))
+    }
+
+    @Test fun everythingHiddenRendersNothing() =
+        assertEquals("", render(spec(
+            order = listOf(DisplayElement.DOW, DisplayElement.DATE, DisplayElement.TIME),
+            dateConfig = date.copy(showDay = false))))
+
     // Ordinals
     @Test fun ordinalSuffixes() {
         val expected = mapOf(
