@@ -108,7 +108,7 @@ class DisplayController private constructor(
         }
         notificationEngine.start()
         notificationEngine.setIconColour(appSettings.iconColor.toInt())
-        notificationEngine.setIconVisible(appSettings.notificationEngineEnabled)
+        notificationEngine.setIconVisible(iconNeededFor(appSettings))
         if (appSettings.overlayEngineEnabled && overlayEngine.canDraw()) {
             overlayEngine.start()
             overlayEngine.applyStyle(appSettings.overlayStyle)
@@ -127,6 +127,14 @@ class DisplayController private constructor(
         if (settings == null) notificationEngine.setIconVisible(false)
         return buildForeground()
     }
+
+    /**
+     * The icon is also shown when the chosen mode relies on the overlay but the
+     * permission for it is missing, so a text-only mode cannot leave the bar blank.
+     */
+    private fun iconNeededFor(appSettings: AppSettings): Boolean =
+        appSettings.notificationEngineEnabled ||
+            (appSettings.overlayEngineEnabled && !overlayEngine.canDraw())
 
     private fun buildForeground(): Notification =
         notificationEngine.build(
@@ -154,7 +162,7 @@ class DisplayController private constructor(
         // never momentarily empty when the mode changes.
         notificationEngine.start()
         notificationEngine.setIconColour(newSettings.iconColor.toInt())
-        notificationEngine.setIconVisible(newSettings.notificationEngineEnabled)
+        notificationEngine.setIconVisible(iconNeededFor(newSettings))
         renderNow()
         if (newSettings.slotEngineEnabled) slotEngine.start() else slotEngine.stop()
         if (newSettings.overlayEngineEnabled && overlayEngine.canDraw()) {

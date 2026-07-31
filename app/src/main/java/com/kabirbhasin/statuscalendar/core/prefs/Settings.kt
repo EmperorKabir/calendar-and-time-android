@@ -31,7 +31,15 @@ data class OverlayStyle(
     val textSizeSp: Float,
     val textColor: Long,
     val hideInFullscreen: Boolean
-)
+) {
+    companion object {
+        /**
+         * Places the text automatically rather than at a fixed x. Negative so it can
+         * never collide with a real position, which is always inside the screen.
+         */
+        const val AUTO_X = -1
+    }
+}
 
 enum class DisplayMode { COMPACT, FULL_TEXT, BOTH }
 
@@ -164,7 +172,11 @@ class SettingsRepository(private val context: Context) {
             iconColor = p.safe(Keys.iconColor)?.toLongOrNull(16) ?: 0xFFFFFFFF,
             datedLauncherIcon = p.safe(Keys.datedLauncherIcon) ?: false,
             overlayStyle = OverlayStyle(
-                offsetX = p.safe(Keys.overlayX) ?: 420,
+                // 420 was the old fixed default and put the text through the
+                // notification icons, so it is read as "never chosen" and placed
+                // automatically. A position the user actually dragged to is kept.
+                offsetX = (p.safe(Keys.overlayX) ?: OverlayStyle.AUTO_X)
+                    .let { if (it == 420) OverlayStyle.AUTO_X else it },
                 offsetY = p.safe(Keys.overlayY) ?: 0,
                 textSizeSp = p.safe(Keys.overlaySize) ?: 13f,
                 textColor = p.safe(Keys.overlayColor)?.toLongOrNull(16) ?: 0xFFFFFFFF,
@@ -175,7 +187,8 @@ class SettingsRepository(private val context: Context) {
         )
     }
 
-    val defaultOverlayStyle = OverlayStyle(420, 0, 13f, 0xFFFFFFFF, true)
+    val defaultOverlayStyle =
+        OverlayStyle(OverlayStyle.AUTO_X, 0, 13f, 0xFFFFFFFF, true)
 
     suspend fun resetOverlayStyle() = setOverlayStyle(defaultOverlayStyle)
 

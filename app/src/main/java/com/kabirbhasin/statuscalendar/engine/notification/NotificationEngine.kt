@@ -144,7 +144,11 @@ class NotificationEngine(private val context: Context) : DisplayEngine {
                         "${display.stackTop} ${display.stackBottom}"
                     else -> contentText
                 }
-                if (chipSupported() && iconVisible && chipText.length <= SHORT_TEXT_LIMIT) {
+                // Requested without consulting canPostPromotedNotifications first. That
+                // call returned false on a device whose own flags had the feature on and
+                // which recorded this app as promotable, so it is not a reliable gate.
+                // The platform simply ignores the request where promotion is not allowed.
+                if (iconVisible && chipText.length <= SHORT_TEXT_LIMIT) {
                     setRequestPromotedOngoing(true)
                     setShortCriticalText(chipText)
                 }

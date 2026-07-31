@@ -102,6 +102,7 @@ import com.kabirbhasin.statuscalendar.core.format.Presets
 import com.kabirbhasin.statuscalendar.core.format.YearStyle
 import com.kabirbhasin.statuscalendar.core.prefs.AppSettings
 import com.kabirbhasin.statuscalendar.core.prefs.DisplayMode
+import com.kabirbhasin.statuscalendar.core.prefs.OverlayStyle
 import com.kabirbhasin.statuscalendar.core.prefs.SettingsRepository
 import com.kabirbhasin.statuscalendar.service.DisplayService
 import com.kabirbhasin.statuscalendar.ui.theme.StatusCalendarTheme
@@ -350,6 +351,20 @@ private fun SettingsScreen(repository: SettingsRepository) {
                     lifecycleOwner.lifecycle.addObserver(observer)
                     onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
                 }
+                // The choice is stored straight away and the permission page opened after
+                // it, rather than held pending. Nothing is then riding on how the user
+                // leaves that page — pressing home instead of back used to lose the
+                // choice entirely. The display falls back to the icon until the
+                // permission arrives, so the bar is never left empty.
+                val requestOverlay: (DisplayMode) -> Unit = { mode ->
+                    scope.launch { repository.setDisplayMode(mode) }
+                    context.startActivity(
+                        Intent(
+                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            Uri.parse("package:${context.packageName}")
+                        )
+                    )
+                }
                 val chip = remember {
                     com.kabirbhasin.statuscalendar.engine.notification
                         .NotificationEngine(context).chipSupported()
@@ -375,6 +390,10 @@ private fun SettingsScreen(repository: SettingsRepository) {
                     description = if (chip)
                         "Text in the status bar itself, shown as a chip beside the clock. " +
                             "Your phone supports this, so nothing is drawn on top of anything."
+                    else if (StatusBarQuirks.substitutesLauncherIcon)
+                        "An icon in the status bar beside the other apps. Your phone draws " +
+                            "this app's own icon there rather than the dated one, so pick " +
+                            "Full text if you want the date itself in the bar."
                     else
                         "A readable icon inside the status bar, beside the other app icons. " +
                             "Long formats show the weekday above a large date number.",
@@ -387,29 +406,27 @@ private fun SettingsScreen(repository: SettingsRepository) {
                         "Your whole format, any length, with live seconds. Drawn over the " +
                             "status bar, so it is hidden on the lock screen."
                     else
-                        "Needs permission to draw over other apps before it can be chosen.",
+                        "Your whole format, any length, with live seconds. Tap to give " +
+                            "permission to draw over other apps, which this mode needs.",
                     selected = current.displayMode == DisplayMode.FULL_TEXT,
-                    enabled = overlayReady
-                ) { scope.launch { repository.setDisplayMode(DisplayMode.FULL_TEXT) } }
+                    enabled = true
+                ) {
+                    if (overlayReady) scope.launch { repository.setDisplayMode(DisplayMode.FULL_TEXT) }
+                    else requestOverlay(DisplayMode.FULL_TEXT)
+                }
                 ModeChoice(
                     label = "Both",
                     description = if (overlayReady)
                         "The icon and the full text together. The text is placed clear of " +
                             "the clock so the two do not overlap."
                     else
-                        "Needs permission to draw over other apps before it can be chosen.",
+                        "The icon and the full text together. Tap to give permission to " +
+                            "draw over other apps, which the text half needs.",
                     selected = current.displayMode == DisplayMode.BOTH,
-                    enabled = overlayReady
-                ) { scope.launch { repository.setDisplayMode(DisplayMode.BOTH) } }
-                if (!overlayReady) {
-                    TextButton(onClick = {
-                        context.startActivity(
-                            Intent(
-                                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                Uri.parse("package:${context.packageName}")
-                            )
-                        )
-                    }) { Text("Grant permission to draw over other apps") }
+                    enabled = true
+                ) {
+                    if (overlayReady) scope.launch { repository.setDisplayMode(DisplayMode.BOTH) }
+                    else requestOverlay(DisplayMode.BOTH)
                 }
                 if (current.displayMode != DisplayMode.COMPACT && overlayReady) {
                     OverlayCalibration(current, repository)
@@ -1073,12 +1090,20 @@ private fun OverlayCalibration(
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("Overlay position and size", style = MaterialTheme.typography.labelLarge)
             Text(
-                "Move the text so that it sits in an empty part of your status bar.",
+                if (style.offsetX == OverlayStyle.AUTO_X)
+                    "The text is placing itself in the empty part of the bar, clear of the " +
+                        "notification icons. Move it here to take over, or reset to hand " +
+                        "it back."
+                else "Move the text so that it sits in an empty part of your status bar.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             val screenWidth = LocalContext.current.resources.displayMetrics.widthPixels.toFloat()
-            SliderRow("Horizontal", style.offsetX.toFloat(), 0f..(screenWidth - 120f)) {
+            SliderRow(
+                "Horizontal",
+                style.offsetX.coerceAtLeast(0).toFloat(),
+                0f..(screenWidth - 120f)
+            ) {
                 scope.launch { repository.setOverlayStyle(style.copy(offsetX = it.toInt())) }
             }
             SliderRow("Vertical", style.offsetY.toFloat(), 0f..200f) {

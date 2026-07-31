@@ -94,8 +94,22 @@ class OverlayEngine(private val context: Context) : DisplayEngine {
             listOf(display.stackTop, display.stackBottom, display.line.ifEmpty { null })
                 .filterNotNull().joinToString(" ")
         } else display.line
-        if (current.text.toString() != text) current.text = text
+        if (current.text.toString() == text) return
+        current.text = text
+        // Automatic placement is measured from the text, so it has to be redone
+        // whenever the text changes width, or the right edge drifts as the time ticks.
+        if (style.offsetX == OverlayStyle.AUTO_X) {
+            val placed = lastAutoWidth
+            val width = textWidth()
+            if (placed != width) {
+                lastAutoWidth = width
+                refreshPlacement()
+            }
+        }
     }
+
+    /** Width the automatic placement was last calculated for. */
+    private var lastAutoWidth = -1
 
     fun applyStyle(newStyle: OverlayStyle) {
         style = newStyle
@@ -157,11 +171,45 @@ class OverlayEngine(private val context: Context) : DisplayEngine {
     private fun clockReserve(): Int =
         (context.resources.displayMetrics.widthPixels * 0.22f).toInt()
 
-    /** Start x, kept clear of the clock and any cutout, and inside the screen. */
+    /**
+     * Room the system keeps at the trailing edge for signal, wifi and battery. The
+     * text ends before it rather than running underneath.
+     */
+    private fun systemIconReserve(): Int =
+        (context.resources.displayMetrics.widthPixels * 0.30f).toInt()
+
+    /**
+     * Width the text actually needs, measured from the live view so the placement
+     * follows the chosen format and text size instead of guessing at them.
+     */
+    private fun textWidth(): Int {
+        val current = view ?: return 0
+        // measure() on the not yet laid out view over-reported by a couple of hundred
+        // pixels, which dragged the text back over the icons. The paint measures the
+        // glyphs actually being drawn.
+        val glyphs = current.paint.measureText(current.text, 0, current.text.length)
+        return glyphs.toInt() + current.paddingLeft + current.paddingRight
+    }
+
+    /**
+     * Start x, kept clear of the clock and any cutout, and inside the screen.
+     *
+     * Left to itself the text is pushed against the trailing edge, in the gap between
+     * the notification icons and the system ones. Starting it just after the clock
+     * put it straight through the notification icons, which cannot be hidden: skins
+     * that draw the app's own icon there ignore a blank one, and the foreground
+     * service has to keep its notification. Nothing can report how wide that run of
+     * icons is, so the text is placed where they are not.
+     */
     private fun startX(): Int {
         val screen = context.resources.displayMetrics.widthPixels
         val minimum = maxOf(clockReserve(), cutoutRight())
-        return style.offsetX.coerceIn(minimum, (screen - 120).coerceAtLeast(minimum))
+        val ceiling = (screen - 120).coerceAtLeast(minimum)
+        if (style.offsetX == OverlayStyle.AUTO_X) {
+            val trailing = screen - systemIconReserve() - textWidth()
+            return trailing.coerceIn(minimum, ceiling)
+        }
+        return style.offsetX.coerceIn(minimum, ceiling)
     }
 
     /** Space left between the text's start edge and the right of the screen. */
