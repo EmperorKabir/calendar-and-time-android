@@ -6,6 +6,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
+import android.graphics.Color
 import android.os.Build
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -30,6 +31,13 @@ class NotificationEngine(private val context: Context) : DisplayEngine {
          * than this produces an icon-only chip, which is worse than not promoting.
          */
         const val SHORT_TEXT_LIMIT = 7
+
+        /**
+         * A colorized background has to carry auto-contrasted text, so a very light
+         * user colour would produce a glaring card in the shade. Colours above this
+         * relative luminance are darkened to sit at it instead.
+         */
+        private const val MAX_CARD_LUMINANCE = 0.34
     }
 
     private val iconFactory = IconFactory()
@@ -72,6 +80,7 @@ class NotificationEngine(private val context: Context) : DisplayEngine {
     }
 
     override fun render(display: RenderedDisplay) {
+        // The timestamp is fixed, so there is nothing to refresh: post only on change.
         if (display == lastRendered) return
         lastRendered = display
         post(display)
@@ -104,6 +113,17 @@ class NotificationEngine(private val context: Context) : DisplayEngine {
             .setOnlyAlertOnce(true)
             .setSilent(true)
             .setShowWhen(false)
+            // Left at the post time. Skins exist that print the timestamp regardless of
+            // setShowWhen, and a doctored one showed up in the shade as "in 73 y".
+            .setWhen(System.currentTimeMillis())
+            // Status bar icons are ordered by the platform's notification comparator,
+            // and a colorized foreground-service notification sits in its highest
+            // non-system tier — above conversations, which otherwise take the lead
+            // position. Measured on this device: without it the icon sat behind a
+            // messaging app, with it the icon leads. Colorizing only counts while the
+            // icon is actually shown; the blank service notification stays plain.
+            .setColorized(iconVisible)
+            .setColor(if (iconVisible) cardColour(iconFactory.colour) else Color.TRANSPARENT)
             .setSortKey("0")
             .setCategory(NotificationCompat.CATEGORY_STATUS)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -130,6 +150,21 @@ class NotificationEngine(private val context: Context) : DisplayEngine {
                 }
             }
             .build()
+    }
+
+    /**
+     * The shade card keeps the colour the user picked for the icon, so the two read as
+     * one setting, but is darkened when that colour is too light to sit behind text.
+     */
+    private fun cardColour(colour: Int): Int {
+        val luminance = androidx.core.graphics.ColorUtils.calculateLuminance(colour)
+        if (luminance <= MAX_CARD_LUMINANCE) return colour or Color.BLACK
+        val hsl = FloatArray(3)
+        androidx.core.graphics.ColorUtils.colorToHSL(colour, hsl)
+        // Pure white and other unsaturated picks have no hue worth keeping, so they
+        // land on a neutral dark grey rather than an arbitrary tint.
+        hsl[2] = 0.30f
+        return androidx.core.graphics.ColorUtils.HSLToColor(hsl)
     }
 
     private fun post(display: RenderedDisplay) {

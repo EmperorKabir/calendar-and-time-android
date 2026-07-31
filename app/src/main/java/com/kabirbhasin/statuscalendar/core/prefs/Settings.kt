@@ -51,6 +51,7 @@ data class AppSettings(
     val startOnBoot: Boolean,
     val formatSpec: FormatSpec,
     val iconColor: Long,
+    val datedLauncherIcon: Boolean,
     val overlayStyle: OverlayStyle,
     val savedPresets: List<SavedPreset>,
     val savedOverlayPresets: List<SavedOverlayPreset>
@@ -95,6 +96,7 @@ class SettingsRepository(private val context: Context) {
         val overlayColor = stringPreferencesKey("overlay_color")
         val overlayHideFullscreen = booleanPreferencesKey("overlay_hide_fullscreen")
         val iconColor = stringPreferencesKey("icon_color")
+        val datedLauncherIcon = booleanPreferencesKey("dated_launcher_icon")
         val savedPresets = stringPreferencesKey("saved_presets")
         val savedOverlayPresets = stringPreferencesKey("saved_overlay_presets")
     }
@@ -121,6 +123,7 @@ class SettingsRepository(private val context: Context) {
         startOnBoot = true,
         formatSpec = Presets.compactDate.spec,
         iconColor = 0xFFFFFFFF,
+        datedLauncherIcon = false,
         overlayStyle = OverlayStyle(420, 0, 13f, 0xFFFFFFFF, true),
         savedPresets = emptyList(),
         savedOverlayPresets = emptyList()
@@ -159,6 +162,7 @@ class SettingsRepository(private val context: Context) {
                 stackMode = p.safe(Keys.stack) ?: d.stackMode
             ),
             iconColor = p.safe(Keys.iconColor)?.toLongOrNull(16) ?: 0xFFFFFFFF,
+            datedLauncherIcon = p.safe(Keys.datedLauncherIcon) ?: false,
             overlayStyle = OverlayStyle(
                 offsetX = p.safe(Keys.overlayX) ?: 420,
                 offsetY = p.safe(Keys.overlayY) ?: 0,
@@ -334,6 +338,9 @@ class SettingsRepository(private val context: Context) {
         it[Keys.separator] = spec.separator
         it[Keys.stack] = spec.stackMode
     }
+
+    suspend fun setDatedLauncherIcon(value: Boolean) =
+        context.dataStore.edit { it[Keys.datedLauncherIcon] = value }
 
     suspend fun setIconColor(colour: Long) =
         context.dataStore.edit { it[Keys.iconColor] = colour.toString(16) }

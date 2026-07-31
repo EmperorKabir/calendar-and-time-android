@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#0B3D91</color>
+    <!-- Sampled from the supplied artwork, so the tile and the lettering match. -->
+    <color name="ic_launcher_background">#13A5A4</color>
 </resources>

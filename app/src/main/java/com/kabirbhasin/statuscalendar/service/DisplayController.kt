@@ -58,6 +58,9 @@ class DisplayController private constructor(
     private var settings: AppSettings? = null
     var onStopRequested: (() -> Unit)? = null
 
+    private val launcherIcon =
+        com.kabirbhasin.statuscalendar.engine.icon.LauncherIconSwitcher(context)
+    private var shownIconDay: Int? = null
     private var collecting = false
 
     init {
@@ -160,6 +163,7 @@ class DisplayController private constructor(
         } else {
             overlayEngine.stop()
         }
+        applyLauncherIcon(newSettings)
         // The notification icon cannot tick per second; seconds ride the overlay only.
         tickSource.setSecondsWanted(
             newSettings.formatSpec.timeConfig.showSeconds && newSettings.overlayEngineEnabled
@@ -167,7 +171,27 @@ class DisplayController private constructor(
         renderNow()
     }
 
+    /**
+     * Switching a launcher alias is a package manager call, so it happens only when the
+     * setting changes or the day rolls over, never on a tick.
+     */
+    private fun applyLauncherIcon(settings: AppSettings) {
+        if (!settings.datedLauncherIcon) {
+            if (shownIconDay != null) {
+                launcherIcon.restoreDefault()
+                shownIconDay = null
+            }
+            return
+        }
+        val today = java.time.LocalDate.now().dayOfMonth
+        if (shownIconDay != today) {
+            launcherIcon.showDay(today)
+            shownIconDay = today
+        }
+    }
+
     private fun renderNow() {
+        settings?.let { if (it.datedLauncherIcon) applyLauncherIcon(it) }
         val current = settings ?: return
         if (!current.displayEnabled) return
         notificationEngine.render(

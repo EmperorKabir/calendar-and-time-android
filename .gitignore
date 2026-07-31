@@ -33,3 +33,4 @@ Thumbs.db
 # Logs and local output
 *.log
 *.hprof
+.kotlin/

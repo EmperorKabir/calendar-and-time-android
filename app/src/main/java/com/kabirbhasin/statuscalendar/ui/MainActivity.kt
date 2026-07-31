@@ -52,8 +52,11 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.graphics.asImageBitmap
 import com.kabirbhasin.statuscalendar.engine.notification.IconFactory
+import com.kabirbhasin.statuscalendar.core.platform.StatusBarQuirks
 import com.kabirbhasin.statuscalendar.engine.slots.SlotEngine
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AssistChip
@@ -411,6 +414,15 @@ private fun SettingsScreen(repository: SettingsRepository) {
                 if (current.displayMode != DisplayMode.COMPACT && overlayReady) {
                     OverlayCalibration(current, repository)
                 }
+
+                ToggleRow(
+                    "Dated app icon",
+                    "Changes the icon in your app list to today's date, so the date can be " +
+                        "read straight from the home screen. Phones that show an app's own " +
+                        "icon in the status bar use the main app icon there, not this one, " +
+                        "so the status bar keeps the standard icon either way.",
+                    current.datedLauncherIcon
+                ) { scope.launch { repository.setDatedLauncherIcon(it) } }
 
                 if (current.notificationEngineEnabled) {
                     Card(modifier = Modifier.fillMaxWidth()) {
@@ -884,7 +896,11 @@ private fun PreviewCard(settings: AppSettings) {
                     modifier = Modifier.size(26.dp)
                 )
                 Text(
-                    "This is exactly what will appear next to your other status bar icons.",
+                    if (StatusBarQuirks.substitutesLauncherIcon)
+                        "Your phone substitutes this app's own icon in the status bar, so " +
+                            "the date and colour shown here stay inside the app. Pick the " +
+                            "draw over option to put the live text in the bar itself."
+                    else "This is exactly what will appear next to your other status bar icons.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -993,10 +1009,19 @@ private fun ModeChoice(
     onSelect: () -> Unit
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        // The whole row selects, not just the dot: tapping the label was doing
+        // nothing at all, which reads as a broken control.
+        modifier = Modifier
+            .fillMaxWidth()
+            .selectable(
+                selected = selected,
+                enabled = enabled,
+                role = Role.RadioButton,
+                onClick = onSelect
+            ),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        RadioButton(selected = selected, onClick = onSelect, enabled = enabled)
+        RadioButton(selected = selected, onClick = null, enabled = enabled)
         Column(Modifier.weight(1f).padding(start = 8.dp)) {
             Text(
                 label,

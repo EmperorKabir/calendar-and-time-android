@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Launcher icon for day 11. Skins such as ColorOS draw an app's launcher icon in
+    the status bar rather than its monochrome notification icon, so switching aliases
+    changes what the bar shows, in full colour. All artwork sits inside the 66dp
+    adaptive safe zone, worst corner 32.5 of the 33 limit.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M39,31 h30 a8,8 0 0 1 8,8 v30 a8,8 0 0 1 -8,8 h-30 a8,8 0 0 1 -8,-8 v-30 a8,8 0 0 1 8,-8 z" />
+    <path android:fillColor="#1A73E8"
+        android:pathData="M39,31 h30 a8,8 0 0 1 8,8 v5 h-46 v-5 a8,8 0 0 1 8,-8 z" />
+    <path android:fillColor="#1A73E8" android:pathData="M49.1,51.0 h3.4 v11.0 h-3.4 z M49.1,62.0 h3.4 v11.0 h-3.4 z" />
+    <path android:fillColor="#1A73E8" android:pathData="M63.1,51.0 h3.4 v11.0 h-3.4 z M63.1,62.0 h3.4 v11.0 h-3.4 z" />
+</vector>
