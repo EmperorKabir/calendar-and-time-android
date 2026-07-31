@@ -25,6 +25,20 @@ class IconFactory {
     }
     private val bounds = Rect()
 
+    /**
+     * Colour the glyphs are drawn in. Whether the status bar honours it depends on
+     * the platform: small icons are frequently treated as an alpha mask and tinted
+     * by the system, in which case only the shade and the in app preview show it.
+     */
+    var colour: Int = Color.WHITE
+        set(newValue) {
+            if (field != newValue) {
+                field = newValue
+                paint.color = newValue
+                lastKey = null
+            }
+        }
+
     private var lastKey: String? = null
     private var lastBitmap: Bitmap? = null
 
@@ -36,7 +50,7 @@ class IconFactory {
         .also { blankBitmap = it }
 
     fun iconFor(display: RenderedDisplay): Bitmap {
-        val key = if (display.stackTop != null) {
+        val key = "${colour.toString(16)}|" + if (display.stackTop != null) {
             "s|${display.stackTop}|${display.stackBottom}"
         } else {
             "l|${display.line}"

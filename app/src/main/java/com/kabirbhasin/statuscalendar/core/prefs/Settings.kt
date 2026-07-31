@@ -50,6 +50,7 @@ data class AppSettings(
     val displayMode: DisplayMode,
     val startOnBoot: Boolean,
     val formatSpec: FormatSpec,
+    val iconColor: Long,
     val overlayStyle: OverlayStyle,
     val savedPresets: List<SavedPreset>,
     val savedOverlayPresets: List<SavedOverlayPreset>
@@ -93,6 +94,7 @@ class SettingsRepository(private val context: Context) {
         val overlaySize = floatPreferencesKey("overlay_size")
         val overlayColor = stringPreferencesKey("overlay_color")
         val overlayHideFullscreen = booleanPreferencesKey("overlay_hide_fullscreen")
+        val iconColor = stringPreferencesKey("icon_color")
         val savedPresets = stringPreferencesKey("saved_presets")
         val savedOverlayPresets = stringPreferencesKey("saved_overlay_presets")
     }
@@ -118,6 +120,7 @@ class SettingsRepository(private val context: Context) {
         displayMode = DisplayMode.COMPACT,
         startOnBoot = true,
         formatSpec = Presets.compactDate.spec,
+        iconColor = 0xFFFFFFFF,
         overlayStyle = OverlayStyle(420, 0, 13f, 0xFFFFFFFF, true),
         savedPresets = emptyList(),
         savedOverlayPresets = emptyList()
@@ -155,6 +158,7 @@ class SettingsRepository(private val context: Context) {
                 separator = p.safe(Keys.separator) ?: d.separator,
                 stackMode = p.safe(Keys.stack) ?: d.stackMode
             ),
+            iconColor = p.safe(Keys.iconColor)?.toLongOrNull(16) ?: 0xFFFFFFFF,
             overlayStyle = OverlayStyle(
                 offsetX = p.safe(Keys.overlayX) ?: 420,
                 offsetY = p.safe(Keys.overlayY) ?: 0,
@@ -330,6 +334,9 @@ class SettingsRepository(private val context: Context) {
         it[Keys.separator] = spec.separator
         it[Keys.stack] = spec.stackMode
     }
+
+    suspend fun setIconColor(colour: Long) =
+        context.dataStore.edit { it[Keys.iconColor] = colour.toString(16) }
 
     suspend fun setOverlayStyle(style: OverlayStyle) = context.dataStore.edit {
         it[Keys.overlayX] = style.offsetX

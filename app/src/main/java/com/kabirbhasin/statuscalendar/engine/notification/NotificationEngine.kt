@@ -48,6 +48,12 @@ class NotificationEngine(private val context: Context) : DisplayEngine {
     private var iconVisible = true
 
     /** When false the notification persists (the service needs it) with no visible glyph. */
+    fun setIconColour(colour: Int) {
+        if (iconFactory.colour == colour) return
+        iconFactory.colour = colour
+        lastRendered?.let { post(it) }
+    }
+
     fun setIconVisible(visible: Boolean) {
         if (iconVisible == visible) return
         iconVisible = visible

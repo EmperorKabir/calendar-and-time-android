@@ -412,6 +412,24 @@ private fun SettingsScreen(repository: SettingsRepository) {
                     OverlayCalibration(current, repository)
                 }
 
+                if (current.notificationEngineEnabled) {
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(16.dp)) {
+                            ColourPicker(
+                                value = current.iconColor,
+                                title = "Icon colour",
+                                explanation = "Changes the compact icon in the preview above " +
+                                    "and in the notification shade. Many phones tint status " +
+                                    "bar icons themselves to match the bar, so the bar itself " +
+                                    "may stay white whatever is chosen here.",
+                                onPick = { picked ->
+                                    scope.launch { repository.setIconColor(picked) }
+                                }
+                            )
+                        }
+                    }
+                }
+
                 ToggleRow(
                     "Start after reboot",
                     "Bring the display back automatically whenever the phone restarts.",
@@ -815,11 +833,12 @@ private fun PreviewCard(settings: AppSettings) {
     }
     val rendered = FormatEngine.render(settings.formatSpec, now, Locale.getDefault())
     val iconFactory = remember { IconFactory() }
+    iconFactory.colour = settings.iconColor.toInt()
     // The icon engine drops seconds, so preview exactly what it will draw.
     val iconDisplay = com.kabirbhasin.statuscalendar.core.format.IconDisplay.forSpec(
         settings.formatSpec, now, Locale.getDefault()
     )
-    val bitmap = remember(iconDisplay) { iconFactory.iconFor(iconDisplay) }
+    val bitmap = remember(iconDisplay, settings.iconColor) { iconFactory.iconFor(iconDisplay) }
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -1223,7 +1242,12 @@ private fun ShadePicker(value: Long, onPick: (Long) -> Unit) {
 }
 
 @Composable
-private fun ColourPicker(value: Long, onPick: (Long) -> Unit) {
+private fun ColourPicker(
+    value: Long,
+    onPick: (Long) -> Unit,
+    title: String = "Text colour",
+    explanation: String = "Match this to your status bar. A light bar needs dark text."
+) {
     val alpha = ((value shr 24) and 0xFF).toInt()
     val red = ((value shr 16) and 0xFF).toInt()
     val green = ((value shr 8) and 0xFF).toInt()
@@ -1234,9 +1258,9 @@ private fun ColourPicker(value: Long, onPick: (Long) -> Unit) {
             ((g.toLong() and 0xFF) shl 8) or (b.toLong() and 0xFF)
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Text colour", style = MaterialTheme.typography.labelLarge)
+        Text(title, style = MaterialTheme.typography.labelLarge)
         Text(
-            "Match this to your status bar. A light bar needs dark text.",
+            explanation,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

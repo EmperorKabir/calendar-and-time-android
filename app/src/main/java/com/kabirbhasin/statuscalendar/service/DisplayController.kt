@@ -104,6 +104,7 @@ class DisplayController private constructor(
             return
         }
         notificationEngine.start()
+        notificationEngine.setIconColour(appSettings.iconColor.toInt())
         notificationEngine.setIconVisible(appSettings.notificationEngineEnabled)
         if (appSettings.overlayEngineEnabled && overlayEngine.canDraw()) {
             overlayEngine.start()
@@ -149,6 +150,7 @@ class DisplayController private constructor(
         // Bring the replacement up before tearing the old one down, so the bar is
         // never momentarily empty when the mode changes.
         notificationEngine.start()
+        notificationEngine.setIconColour(newSettings.iconColor.toInt())
         notificationEngine.setIconVisible(newSettings.notificationEngineEnabled)
         renderNow()
         if (newSettings.slotEngineEnabled) slotEngine.start() else slotEngine.stop()

@@ -1,29 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Adaptive icon foreground. Every mask shape (square, rounded square, circle,
+    squircle, teardrop) crops the 108dp canvas differently, and only the centre 66dp
+    circle is guaranteed to survive. All artwork here sits inside a 46dp square
+    centred at 54,54, whose worst corner is 32.5dp from centre, so nothing clips.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Calendar body -->
+
+    <!-- Page -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M30,36 h48 a5,5 0 0 1 5,5 v36 a5,5 0 0 1 -5,5 h-48 a5,5 0 0 1 -5,-5 v-36 a5,5 0 0 1 5,-5 z" />
-    <!-- Header band -->
+        android:pathData="M39,31 h30 a8,8 0 0 1 8,8 v30 a8,8 0 0 1 -8,8 h-30 a8,8 0 0 1 -8,-8 v-30 a8,8 0 0 1 8,-8 z" />
+
+    <!-- Header band, square along its lower edge so it reads as a calendar spine -->
     <path
         android:fillColor="#1A73E8"
-        android:pathData="M30,36 h48 a5,5 0 0 1 5,5 v9 h-58 v-9 a5,5 0 0 1 5,-5 z" />
-    <!-- Binder rings -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M41,29 a3,3 0 0 1 3,3 v9 a3,3 0 0 1 -6,0 v-9 a3,3 0 0 1 3,-3 z" />
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M67,29 a3,3 0 0 1 3,3 v9 a3,3 0 0 1 -6,0 v-9 a3,3 0 0 1 3,-3 z" />
-    <!-- Day numeral 28 rendered as blocks so it reads at small sizes -->
+        android:pathData="M39,31 h30 a8,8 0 0 1 8,8 v6 h-46 v-6 a8,8 0 0 1 8,-8 z" />
+
+    <!-- Day grid: three columns, two rows -->
     <path
         android:fillColor="#1A73E8"
-        android:pathData="M40,58 h11 v4 h-7 v4 h7 v10 h-11 v-4 h7 v-2 h-7 z" />
+        android:pathData="M39,53 h7 v7 h-7 z M50.5,53 h7 v7 h-7 z M62,53 h7 v7 h-7 z" />
     <path
         android:fillColor="#1A73E8"
-        android:pathData="M57,58 h11 v18 h-11 z M61,62 v3 h3 v-3 z M61,69 v3 h3 v-3 z" />
+        android:pathData="M39,64 h7 v7 h-7 z M50.5,64 h7 v7 h-7 z" />
+    <!-- Today, filled solid to give the mark a focal point -->
+    <path
+        android:fillColor="#E8710A"
+        android:pathData="M62,64 h7 v7 h-7 z" />
 </vector>
